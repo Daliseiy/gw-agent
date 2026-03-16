@@ -10,10 +10,11 @@
 #   Step 9  — Creates the Artifact Registry Docker repository
 #
 # Usage:
-#   ./setup_gcp.sh              # run all steps (5–9)
-#   ./setup_gcp.sh --steps 8-9  # run only steps 8 and 9
-#   ./setup_gcp.sh --steps 9    # run only step 9
-#   ./setup_gcp.sh --steps 5-6  # run only steps 5 and 6
+#   ./setup_gcp.sh                       # run all steps (5–9)
+#   ./setup_gcp.sh --steps 8-9           # run only steps 8 and 9
+#   ./setup_gcp.sh --steps 9             # run only step 9
+#   ./setup_gcp.sh --steps 5-6          # run only steps 5 and 6
+#   ./setup_gcp.sh --fix-oidc            # fix "attribute condition rejected" error
 # =============================================================================
 set -euo pipefail
 
@@ -29,6 +30,64 @@ prompt()  { echo -e "${CYAN}[INPUT]${NC} $*"; }
 header()  { echo -e "\n${BOLD}${BLUE}══════════════════════════════════════════${NC}"; \
             echo -e "${BOLD} $*${NC}"; \
             echo -e "${BOLD}${BLUE}══════════════════════════════════════════${NC}"; }
+
+# ── Preflight checks ──────────────────────────────────────────────────────────
+command -v gcloud >/dev/null 2>&1 \
+  || error "gcloud CLI not found. Install it from https://cloud.google.com/sdk/docs/install"
+gcloud auth print-access-token >/dev/null 2>&1 \
+  || error "Not authenticated. Run: gcloud auth login"
+
+# ── --fix-oidc shortcut ───────────────────────────────────────────────────────
+# Handles the "attribute condition rejected" GitHub Actions auth error by
+# updating the OIDC provider condition to match the exact repo path.
+if [[ "${1:-}" == "--fix-oidc" ]]; then
+  clear
+  echo ""
+  echo -e "${BOLD}${BLUE}  Fix: OIDC Attribute Condition${NC}"
+  echo -e "${BLUE}  Resolves: 'The given credential is rejected by the attribute condition'${NC}"
+  echo ""
+  echo "  This updates your Workload Identity OIDC provider to match"
+  echo "  the exact repository path GitHub sends in its token."
+  echo ""
+
+  echo -n "  GCP Project ID: "
+  read -r FIX_PROJECT
+  [[ -z "$FIX_PROJECT" ]] && error "Project ID cannot be empty."
+
+  echo -n "  GitHub username or org (e.g. johndoe): "
+  read -r FIX_ORG
+  [[ -z "$FIX_ORG" ]] && error "GitHub org cannot be empty."
+
+  echo -n "  GitHub repository name (e.g. workspace-agent): "
+  read -r FIX_REPO
+  [[ -z "$FIX_REPO" ]] && error "Repository name cannot be empty."
+
+  # GitHub sends the repository claim in lowercase — enforce that here
+  FIX_REPO_PATH="${FIX_ORG}/${FIX_REPO}"
+  FIX_REPO_PATH_LOWER=$(echo "$FIX_REPO_PATH" | tr '[:upper:]' '[:lower:]')
+
+  echo ""
+  echo -e "  ${BOLD}Repo path that will be set:${NC} ${GREEN}${FIX_REPO_PATH_LOWER}${NC}"
+  echo -n "  Confirm? Type yes: "
+  read -r FIX_CONFIRM
+  [[ "$FIX_CONFIRM" != "yes" ]] && { echo "Aborted."; exit 0; }
+
+  echo ""
+  info "Updating OIDC provider attribute condition…"
+  gcloud iam workload-identity-pools providers update-oidc github-provider \
+    --location=global \
+    --workload-identity-pool=github-pool \
+    --attribute-condition="attribute.repository == '${FIX_REPO_PATH_LOWER}'" \
+    --project="$FIX_PROJECT" \
+    --quiet
+
+  success "OIDC provider updated."
+  echo ""
+  echo -e "  ${BOLD}Next:${NC} Re-run your GitHub Actions workflow."
+  echo -e "  In your repo → Actions tab → click the failed workflow → Re-run jobs."
+  echo ""
+  exit 0
+fi
 
 # ── Parse --steps flag ────────────────────────────────────────────────────────
 STEP_FROM=5
@@ -258,6 +317,8 @@ if run_step 6; then
   fi
 
   info "Creating OIDC provider: $PROVIDER_NAME…"
+  # GitHub always sends the repository claim in lowercase — the condition must match exactly.
+  REPO_PATH_LOWER=$(echo "${GITHUB_ORG}/${GITHUB_REPO}" | tr '[:upper:]' '[:lower:]')
   if gcloud iam workload-identity-pools providers describe "$PROVIDER_NAME" \
      --location=global --workload-identity-pool="$POOL_NAME" --quiet >/dev/null 2>&1; then
     warn "Provider already exists — skipping."
@@ -267,7 +328,7 @@ if run_step 6; then
       --workload-identity-pool="$POOL_NAME" \
       --issuer-uri="https://token.actions.githubusercontent.com" \
       --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
-      --attribute-condition="assertion.repository == '${GITHUB_ORG}/${GITHUB_REPO}'" \
+      --attribute-condition="attribute.repository == '${REPO_PATH_LOWER}'" \
       --project="$PROJECT_ID" \
       --quiet
     success "OIDC provider created."
