@@ -3,872 +3,1286 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Google Workspace AI Assistant</title>
+  <meta name="color-scheme" content="light dark" />
+  <title>Workspace AI Assistant</title>
+  <!-- Prevent flash of wrong theme before CSS loads -->
+  <script>
+    (function(){
+      const s=localStorage.getItem('gw_agent_theme');
+      const d=s?s==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme',d?'dark':'light');
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Display:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    /* ── Design tokens — Light ──────────────────────────────────────── */
     :root {
-      --surface: #ffffff;
-      --surface-soft: #f8f9fa;
-      --text-primary: #1f1f1f;
-      --text-secondary: #5f6368;
-      --outline: #e0e3e7;
-      --elevation-1: 0 1px 2px rgba(60, 64, 67, 0.18), 0 1px 3px 1px rgba(60, 64, 67, 0.08);
-      --elevation-2: 0 4px 12px rgba(60, 64, 67, 0.2), 0 2px 6px rgba(60, 64, 67, 0.08);
-      --blue: #1a73e8;
-      --red: #ea4335;
-      --yellow: #fbbc04;
-      --green: #34a853;
+      color-scheme: light;
+      --surface:        #ffffff;
+      --surface-dim:    #f8f9fa;
+      --surface-tint:   #f0f4ff;
+      --surface-raised: #ffffff;
+      --outline:        #e0e3e8;
+      --outline-soft:   #eef0f3;
+      --text-1:         #1a1c1e;
+      --text-2:         #44474a;
+      --text-3:         #74777b;
+      --scrim:          rgba(0,0,0,.25);
+      /* semantic surfaces */
+      --tool-bg:        #faf8ff;
+      --tool-border:    #ede7ff;
+      --err-bg:         #fff5f5;
+      --err-border:     #f5c8c5;
+      --err-text:       #8a1c14;
+      --ai-bg:          #f4fbf6;
+      --ai-border:      #d4edda;
+      --ai-text:        #1a5e30;
+      /* brand */
+      --blue:   #1a73e8;
+      --blue-s: #d2e3fc;
+      --red:    #ea4335;
+      --red-s:  #fce8e6;
+      --yellow: #f9ab00;
+      --yel-s:  #fef3d0;
+      --green:  #34a853;
+      --grn-s:  #d4edda;
+      --purple: #7c4dff;
+      --pur-s:  #ede7ff;
+      /* elevations */
+      --e1: 0 1px 2px rgba(60,64,67,.15), 0 1px 3px 1px rgba(60,64,67,.07);
+      --e2: 0 2px 8px rgba(60,64,67,.15), 0 1px 4px rgba(60,64,67,.08);
+      --e3: 0 6px 24px rgba(60,64,67,.14), 0 2px 8px rgba(60,64,67,.08);
+      /* radius */
+      --r-sm: 12px; --r-md: 18px; --r-lg: 24px; --r-xl: 28px; --r-pill: 999px;
     }
 
-    * { box-sizing: border-box; }
+    /* ── Design tokens — Dark ───────────────────────────────────────── */
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --surface:        #1c1e21;
+      --surface-dim:    #141618;
+      --surface-tint:   #1e2540;
+      --surface-raised: #26282c;
+      --outline:        #3c3f43;
+      --outline-soft:   #2a2d31;
+      --text-1:         #e3e5e8;
+      --text-2:         #bdc1c6;
+      --text-3:         #80868b;
+      --scrim:          rgba(0,0,0,.55);
+      /* semantic surfaces */
+      --tool-bg:        #211d2e;
+      --tool-border:    #3d3060;
+      --err-bg:         #2c1a18;
+      --err-border:     #6b2d28;
+      --err-text:       #f28b82;
+      --ai-bg:          #162418;
+      --ai-border:      #2a5e34;
+      --ai-text:        #81c995;
+      /* brand stays vivid — only tints get darker */
+      --blue-s: #1a3558;
+      --red-s:  #3b1614;
+      --yel-s:  #3a2e00;
+      --grn-s:  #162418;
+      --pur-s:  #261650;
+      /* elevations become more subtle in dark */
+      --e1: 0 1px 3px rgba(0,0,0,.4);
+      --e2: 0 2px 10px rgba(0,0,0,.45);
+      --e3: 0 6px 28px rgba(0,0,0,.5);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { transition: background-color 260ms ease, color 260ms ease; }
 
     body {
-      margin: 0;
-      min-height: 100vh;
-      color: var(--text-primary);
-      font-family: "Google Sans", "Inter", "Segoe UI", sans-serif;
-      background: radial-gradient(circle at 14% 18%, #edf4ff 0, #ffffff 38%),
-                  radial-gradient(circle at 84% 88%, #fff7ea 0, #ffffff 42%);
+      font-family: "Google Sans", system-ui, sans-serif;
+      background-color: var(--surface-dim);
+      background-image:
+        radial-gradient(ellipse 60% 40% at 20% 0%, rgba(26,115,232,.07) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 85% 100%, rgba(52,168,83,.06) 0%, transparent 65%);
+      color: var(--text-1);
+      min-height: 100dvh;
+      transition: background-color 260ms ease;
+    }
+    [data-theme="dark"] body {
+      background-image:
+        radial-gradient(ellipse 60% 40% at 20% 0%, rgba(26,115,232,.09) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 85% 100%, rgba(52,168,83,.07) 0%, transparent 65%);
     }
 
-    .app-shell {
-      max-width: 1560px;
+    /* ── Shell ──────────────────────────────────────────────────────── */
+    .shell {
+      max-width: 1440px;
       margin: 0 auto;
-      min-height: 100vh;
+      min-height: 100dvh;
       display: grid;
       grid-template-rows: auto 1fr;
-      padding: 20px;
-      gap: 16px;
-    }
-
-    .topbar {
-      background: var(--surface);
-      border: 1px solid var(--outline);
-      border-radius: 20px;
-      box-shadow: var(--elevation-1);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
+      padding: 16px 20px 20px;
       gap: 14px;
     }
 
-    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-
-    .brand-mark {
-      width: 34px; height: 34px; border-radius: 12px; flex-shrink: 0;
-      background: conic-gradient(from 180deg, var(--blue), var(--green), var(--yellow), var(--red), var(--blue));
-      box-shadow: inset 0 0 0 6px #fff;
+    /* ── Topbar ─────────────────────────────────────────────────────── */
+    .topbar {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: var(--r-xl);
+      box-shadow: var(--e1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px 8px 14px;
+      gap: 12px;
     }
 
-    .brand h1 { margin: 0; font-size: 18px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .brand p  { margin: 2px 0 0; color: var(--text-secondary); font-size: 13px; }
+    .brand { display: flex; align-items: center; gap: 11px; }
 
-    .topbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .brand-icon {
+      width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
+      background: conic-gradient(from 200deg at 50% 50%,
+        var(--blue) 0deg, var(--green) 90deg,
+        var(--yellow) 180deg, var(--red) 270deg, var(--blue) 360deg);
+      box-shadow: inset 0 0 0 5px var(--surface);
+    }
+
+    /* ── Theme toggle ───────────────────────────────────────────────── */
+    .theme-btn {
+      width: 36px; height: 36px; border: 1px solid var(--outline); border-radius: var(--r-sm);
+      background: var(--surface); display: grid; place-items: center;
+      cursor: pointer; transition: background 120ms ease, transform 120ms ease;
+      position: relative; overflow: hidden;
+    }
+    .theme-btn:hover { background: var(--surface-dim); transform: translateY(-1px); }
+    .theme-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--text-2);
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+      position: absolute; transition: opacity 220ms ease, transform 220ms ease; }
+    .theme-btn .icon-sun  { opacity: 1;  transform: rotate(0deg) scale(1); }
+    .theme-btn .icon-moon { opacity: 0;  transform: rotate(-45deg) scale(.6); }
+    [data-theme="dark"] .theme-btn .icon-sun  { opacity: 0;  transform: rotate(45deg) scale(.6); }
+    [data-theme="dark"] .theme-btn .icon-moon { opacity: 1;  transform: rotate(0deg) scale(1); }
+
+    .brand-text { display: flex; flex-direction: column; }
+    .brand-name { font-size: 15px; font-weight: 700; letter-spacing: -.2px; color: var(--text-1); white-space: nowrap; }
+    .brand-sub  { font-size: 11px; color: var(--text-3); margin-top: 1px; white-space: nowrap; }
+
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
 
     .profile-pill {
       display: flex; align-items: center; gap: 8px;
-      border: 1px solid var(--outline); border-radius: 999px; padding: 6px 10px;
-      background: #fff; max-width: 280px;
+      border: 1px solid var(--outline); border-radius: var(--r-pill);
+      padding: 5px 12px 5px 5px; background: var(--surface);
     }
-    .profile-pill img { width: 30px; height: 30px; border-radius: 999px; object-fit: cover; background: #e8eaed; }
-    .profile-pill .name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .profile-pill img { width: 26px; height: 26px; border-radius: 50%; background: #e8eaed; flex-shrink: 0; }
+    .profile-pill .name { font-size: 13px; font-weight: 600; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 
-    .action-btn {
-      border: 1px solid var(--outline); background: #fff; border-radius: 12px;
-      color: #1f1f1f; font-family: inherit; font-size: 13px; font-weight: 600;
-      padding: 9px 12px; cursor: pointer; transition: background 120ms ease, transform 120ms ease;
+    .btn {
+      border: 0; border-radius: var(--r-sm); font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 8px 14px; cursor: pointer; transition: filter 120ms ease, transform 120ms ease;
     }
-    .action-btn:hover { background: #f5f8fd; transform: translateY(-1px); }
-    .action-btn.primary { border: 0; color: #fff; background: linear-gradient(135deg, var(--blue), #175cc1); box-shadow: var(--elevation-1); }
-    .action-btn.danger  { border: 0; color: #fff; background: linear-gradient(135deg, #e5483b, #c5221f); box-shadow: var(--elevation-1); }
-    .action-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-
-    .workspace {
-      display: grid;
-      grid-template-columns: minmax(270px, 320px) minmax(760px, 1fr);
-      gap: 16px;
-    }
-
-    .card {
-      border: 1px solid var(--outline); border-radius: 24px;
-      background: var(--surface); box-shadow: var(--elevation-1);
-      overflow: hidden; display: flex; flex-direction: column; min-height: 200px;
-    }
-    .card-header { padding: 16px 18px 12px; border-bottom: 1px solid #edf0f2; }
-    .card-title  { margin: 0; font-size: 16px; letter-spacing: -0.1px; }
-    .card-subtitle { margin: 6px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.45; }
-    .card-body { padding: 16px 18px 18px; flex: 1; min-height: 0; }
-
-    .chip-grid { display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; }
-    .prompt-chip {
-      border: 1px solid #d7e2f7; background: #f7faff; color: #174ea6;
-      border-radius: 999px; padding: 9px 13px; font-family: inherit;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      transition: background 120ms ease, transform 120ms ease, border-color 120ms ease;
-    }
-    .prompt-chip:hover { background: #eaf2ff; border-color: #c6d9ff; transform: translateY(-1px); }
-
-    .hint {
-      border-radius: 14px; border: 1px solid #f2e5b5; background: #fffdf2;
-      color: #7a5c00; padding: 10px 12px; font-size: 12px; line-height: 1.45; margin-top: 12px;
-    }
-
-    /* ── Voice card ─────────────────────────────────────────────────────── */
-    .voice-card { justify-content: space-between; min-height: clamp(560px, 74vh, 800px); }
-    .voice-stage { display: grid; place-items: center; gap: 18px; padding-top: 12px; }
-
-    .voice-indicator {
-      width: min(520px, 74vw); aspect-ratio: 1 / 1;
-      display: grid; place-items: center; position: relative;
-    }
-
-    .wave {
-      position: absolute; border-radius: 999px; border: 4px solid transparent;
-      opacity: 0.35; transform: scale(0.88); transition: opacity 180ms ease;
-    }
-    .wave.one   { inset: 14%; border-top-color: var(--blue); border-right-color: var(--yellow); animation: breathe 3.1s ease-in-out infinite; }
-    .wave.two   { inset: 6%;  border-left-color: var(--red);  border-bottom-color: var(--green); animation: breathe 2.6s ease-in-out infinite 0.5s; }
-    .wave.three { inset: 0;   border-top-color: #8ab4f8; border-right-color: #fdd663; border-bottom-color: #81c995; border-left-color: #f28b82; animation: breathe 3.6s ease-in-out infinite 0.9s; }
-
-    /* recording = user is speaking */
-    .voice-indicator.recording .wave { opacity: 0.9; animation-duration: 1.1s; }
-
-    /* speaking = AI is speaking */
-    .voice-indicator.speaking .wave {
-      opacity: 0.75;
-      border-color: transparent;
-    }
-    .voice-indicator.speaking .wave.one   { border-top-color: var(--green); border-right-color: var(--blue); animation-duration: 0.9s; }
-    .voice-indicator.speaking .wave.two   { border-left-color: var(--blue); border-bottom-color: var(--yellow); animation-duration: 0.75s; }
-    .voice-indicator.speaking .wave.three { border-top-color: var(--blue); border-right-color: var(--green); border-bottom-color: var(--yellow); border-left-color: var(--blue); animation-duration: 1.05s; }
-
-    /* thinking = tool calls in-flight */
-    .voice-indicator.thinking .wave { opacity: 0.55; animation-duration: 1.8s; }
-
-    .mic-button {
-      width: 148px; height: 148px; border: 0; border-radius: 999px;
-      color: #fff; font-family: inherit; font-size: 14px; font-weight: 700;
-      letter-spacing: 0.2px; cursor: pointer; box-shadow: var(--elevation-2);
-      background: linear-gradient(140deg, var(--blue), var(--green) 58%, var(--yellow));
-      transition: transform 120ms ease, filter 120ms ease;
-      position: relative; display: grid; place-items: center;
-      text-align: center; line-height: 1.25; padding: 10px;
-    }
-    .mic-button:hover    { transform: translateY(-2px); filter: saturate(1.05); }
-    .mic-button.recording { background: linear-gradient(130deg, var(--red), #d93025, #f28b82); }
-    .mic-button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; }
-
-    .voice-status { text-align: center; color: var(--text-secondary); font-size: 14px; margin: 0; min-height: 22px; }
-
-    /* AI activity badge shown below the status line */
-    .ai-badge {
-      display: inline-flex; align-items: center; gap: 7px;
-      background: #f0f6ff; border: 1px solid #d4e5ff; border-radius: 999px;
-      padding: 5px 12px; font-size: 12px; font-weight: 600; color: #1558d6;
-      opacity: 0; transform: translateY(4px);
-      transition: opacity 200ms ease, transform 200ms ease;
-      min-height: 30px;
-    }
-    .ai-badge.visible { opacity: 1; transform: translateY(0); }
-    .ai-badge.tool    { background: #f3f0ff; border-color: #ccc5f8; color: #5b35d5; }
-    .ai-badge.speaking { background: #f0faf3; border-color: #b6eac5; color: #1a7336; }
-
-    .badge-dot {
-      width: 7px; height: 7px; border-radius: 999px;
-      background: currentColor; flex-shrink: 0;
-      animation: pulse-dot 1s ease-in-out infinite;
-    }
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: 0.4; transform: scale(0.7); }
-    }
-
-    .controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+    .btn:hover { filter: brightness(.96); transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    .btn-ghost  { background: transparent; border: 1px solid var(--outline); color: var(--text-1); }
+    .btn-danger { background: var(--red); color: #fff; box-shadow: var(--e1); }
 
     .icon-btn {
-      border: 1px solid var(--outline); background: #fff; border-radius: 12px;
-      width: 40px; height: 40px; display: grid; place-items: center;
-      cursor: pointer; transition: background 120ms ease, transform 120ms ease; position: relative;
+      width: 36px; height: 36px; border: 1px solid var(--outline); border-radius: var(--r-sm);
+      background: var(--surface); display: grid; place-items: center;
+      cursor: pointer; transition: background 120ms ease, transform 120ms ease;
     }
-    .icon-btn:hover { background: #f5f8fd; transform: translateY(-1px); }
-    .icon-btn svg { width: 20px; height: 20px; stroke: #3c4043; }
+    .icon-btn:hover { background: var(--surface-dim); transform: translateY(-1px); }
+    .icon-btn svg { width: 18px; height: 18px; stroke: var(--text-2); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-    .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
-
-    /* ── History drawer ─────────────────────────────────────────────────── */
-    .history-overlay {
-      position: fixed; inset: 0; background: rgba(60,64,67,0.2); backdrop-filter: blur(1.5px);
-      opacity: 0; pointer-events: none; transition: opacity 180ms ease; z-index: 20;
+    /* ── Main content: single full-width card ───────────────────────── */
+    .voice-card {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: var(--r-xl);
+      box-shadow: var(--e2);
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      overflow: hidden;
+      min-height: 0;
     }
-    .history-overlay.open { opacity: 1; pointer-events: auto; }
 
-    .history-drawer {
-      position: fixed; top: 0; right: 0; width: min(420px, 100vw); height: 100vh;
-      background: #fff; border-left: 1px solid #e6eaee;
-      box-shadow: -8px 0 30px rgba(60,64,67,0.2);
-      display: flex; flex-direction: column;
-      transform: translateX(100%); transition: transform 210ms ease; z-index: 30;
+    /* Card header */
+    .vc-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--outline-soft);
     }
-    .history-drawer.open { transform: translateX(0); }
+    .vc-header-left { display: flex; flex-direction: column; gap: 2px; }
+    .vc-title  { font-size: 17px; font-weight: 700; letter-spacing: -.2px; }
+    .vc-sub    { font-size: 12px; color: var(--text-3); }
+    .vc-header-right { display: flex; align-items: center; gap: 8px; }
 
-    .history-header { padding: 16px; border-bottom: 1px solid #edf0f2; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .history-header h2 { margin: 0; font-size: 17px; letter-spacing: -0.1px; }
-    .history-header p  { margin: 4px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.35; }
+    /* Connection status dot */
+    .conn-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #dadce0;
+      transition: background 300ms ease;
+      box-shadow: 0 0 0 0 transparent;
+    }
+    .conn-dot.connected { background: var(--green); box-shadow: 0 0 0 3px rgba(52,168,83,.18); }
+    .conn-dot.connecting { background: var(--yellow); animation: dot-pulse 1s ease-in-out infinite; }
+    .conn-dot.error { background: var(--red); }
+    @keyframes dot-pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .4; }
+    }
 
-    .history-body { padding: 12px; flex: 1; min-height: 0; }
+    /* ── Suggestion chips row ───────────────────────────────────────── */
+    .chips-row {
+      padding: 10px 20px 0;
+      display: flex; gap: 8px; flex-wrap: wrap;
+      justify-content: center;
+    }
 
-    .log-list { height: 100%; overflow: auto; display: grid; gap: 10px; align-content: start; }
+    .s-chip {
+      display: inline-flex; align-items: center;
+      border: 1px solid var(--blue-s); background: var(--surface-tint);
+      color: var(--blue); border-radius: var(--r-pill);
+      padding: 7px 14px; font-family: inherit; font-size: 12.5px; font-weight: 500;
+      white-space: nowrap; cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+      flex-shrink: 0;
+    }
+    .s-chip:hover { background: #dbeaff; border-color: #a8c7fa; transform: translateY(-1px); }
+
+    /* ── Voice stage ────────────────────────────────────────────────── */
+    .voice-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 20px 12px;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    /* Orb ring */
+    .orb-wrap {
+      position: relative;
+      width: clamp(180px, 28vw, 280px);
+      aspect-ratio: 1;
+      display: grid; place-items: center;
+      flex-shrink: 0;
+    }
+
+    .ring {
+      position: absolute; inset: 0; border-radius: 50%;
+      border: 3px solid transparent; opacity: .3;
+    }
+    .ring-a { animation: spin-a 7s linear infinite; border-top-color: var(--blue); border-right-color: var(--yellow); }
+    .ring-b { inset: 8%; animation: spin-b 5s linear infinite; border-left-color: var(--red); border-bottom-color: var(--green); }
+    .ring-c { inset: 16%; animation: spin-a 9s linear infinite reverse; border-top-color: var(--green); border-right-color: var(--blue); }
+
+    @keyframes spin-a { to { transform: rotate(360deg); } }
+    @keyframes spin-b { to { transform: rotate(-360deg); } }
+
+    /* Active states amplify ring */
+    .orb-wrap.listening .ring { opacity: .85; animation-duration: 1.4s !important; }
+    .orb-wrap.speaking  .ring { opacity: .75; animation-duration: 1.8s !important; }
+    .orb-wrap.speaking  .ring-a { border-top-color: var(--green); border-right-color: var(--blue); }
+    .orb-wrap.speaking  .ring-b { border-left-color: var(--blue); border-bottom-color: var(--yellow); }
+    .orb-wrap.thinking  .ring { opacity: .5; animation-duration: 2.5s !important; }
+    .orb-wrap.muted .ring { opacity: .15; }
+
+    /* Mic button (center of orb) */
+    .mic-btn {
+      position: relative; z-index: 1;
+      width: clamp(96px, 14vw, 128px); aspect-ratio: 1;
+      border: 0; border-radius: 50%; cursor: pointer;
+      font-family: inherit; font-size: 12px; font-weight: 700;
+      color: #fff; letter-spacing: .3px; line-height: 1.3;
+      text-align: center; padding: 10px;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, var(--blue) 0%, #0d62d6 40%, var(--green) 100%);
+      box-shadow: var(--e3);
+      transition: transform 140ms ease, filter 140ms ease, background 300ms ease;
+    }
+    .mic-btn:hover:not(:disabled) { transform: scale(1.04); filter: saturate(1.1); }
+    .mic-btn:active:not(:disabled) { transform: scale(.97); }
+    .mic-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .mic-btn.muted  { background: linear-gradient(145deg, #5f6368, #3c4043); }
+    .mic-btn.muted:hover:not(:disabled) { filter: brightness(1.12); }
+
+    .mic-icon { width: 28px; height: 28px; flex-shrink: 0; }
+    .mic-label { font-size: 11px; margin-top: 3px; opacity: .9; }
+
+    /* Status + badge row */
+    .status-row {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      text-align: center;
+    }
+    .status-text { font-size: 13px; color: var(--text-3); min-height: 20px; }
+
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 200ms ease, transform 200ms ease;
+      min-height: 26px; letter-spacing: .2px;
+    }
+    .ai-badge.show  { opacity: 1; transform: translateY(0); }
+    .ai-badge.listen  { background: var(--blue-s);  color: var(--blue);   border: 1px solid #a8c7fa; }
+    .ai-badge.think   { background: var(--yel-s);   color: #8a5e00;       border: 1px solid #f5d77e; }
+    .ai-badge.tool    { background: var(--pur-s);   color: var(--purple);  border: 1px solid #c8b7f8; }
+    .ai-badge.speak   { background: var(--grn-s);   color: #1a5e30;        border: 1px solid #93d5a8; }
+
+    .badge-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+      animation: bdot 1s ease-in-out infinite;
+    }
+    @keyframes bdot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.6)} }
+
+    /* Controls row */
+    .controls-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── Response feed ──────────────────────────────────────────────── */
+    .response-section {
+      border-top: 1px solid var(--outline-soft);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      max-height: 320px;
+    }
+
+    .response-header {
+      padding: 10px 20px 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .response-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+      color: var(--text-3);
+    }
+    .clear-btn {
+      font-size: 11px; font-weight: 600; color: var(--blue); background: none;
+      border: 0; cursor: pointer; padding: 2px 4px;
+    }
+    .clear-btn:hover { text-decoration: underline; }
+
+    .feed {
+      flex: 1; overflow-y: auto; padding: 0 20px 16px;
+      display: flex; flex-direction: column; gap: 8px;
+      scrollbar-width: thin; scrollbar-color: #d0d5dd transparent;
+    }
+
+    /* Empty state */
+    .feed-empty {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text-3); font-size: 12px; padding: 10px 0;
+    }
+    .feed-empty svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; opacity: .6; }
+
+    /* Response cards */
+    .r-card {
+      border: 1px solid var(--outline-soft); border-radius: var(--r-md);
+      background: var(--surface-dim); overflow: hidden;
+      animation: slide-in 220ms ease;
+    }
+    @keyframes slide-in { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+
+    .r-card-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px 0;
+    }
+    .r-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+      padding: 2px 8px; border-radius: var(--r-pill);
+    }
+    .r-tag.info   { background: var(--blue-s); color: var(--blue); }
+    .r-tag.task   { background: var(--grn-s);  color: #1a5e30; }
+    .r-tag.event  { background: var(--blue-s); color: var(--blue); }
+    .r-tag.email  { background: var(--yel-s);  color: #8a5e00; }
+    .r-tag.tool   { background: var(--pur-s);  color: var(--purple); }
+    .r-time { font-size: 10px; color: var(--text-3); margin-left: auto; }
+
+    .r-body { padding: 8px 14px 12px; font-size: 13px; color: var(--text-2); line-height: 1.55; }
+
+    /* List items inside a card */
+    .r-list { list-style: none; display: flex; flex-direction: column; gap: 5px; padding: 6px 14px 12px; }
+    .r-list-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 13px; color: var(--text-2); line-height: 1.45;
+    }
+    .r-bullet {
+      width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; margin-top: 1px;
+      display: grid; place-items: center; font-size: 10px; font-weight: 700;
+    }
+    .r-bullet.num  { background: var(--blue-s);  color: var(--blue); }
+    .r-bullet.dot  { background: var(--grn-s);   color: #1a5e30; }
+    .r-bullet.dash { background: var(--outline); color: var(--text-3); }
+
+    .r-item-text { flex: 1; }
+    .r-item-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+    /* Tool call card */
+    .tool-card {
+      border: 1px solid var(--tool-border); border-radius: var(--r-md);
+      background: var(--tool-bg); padding: 10px 14px;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--purple); font-weight: 600;
+      animation: slide-in 220ms ease;
+    }
+    .tool-card svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+    .tool-names { color: var(--text-2); font-weight: 400; }
+
+    /* ── History drawer ─────────────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; background: var(--scrim); backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity 200ms ease; z-index: 40;
+    }
+    .overlay.open { opacity: 1; pointer-events: auto; }
+
+    .drawer {
+      position: fixed; top: 0; right: 0; width: min(400px,100vw); height: 100dvh;
+      background: var(--surface-raised); border-left: 1px solid var(--outline);
+      box-shadow: var(--e3); display: flex; flex-direction: column;
+      transform: translateX(100%); transition: transform 220ms cubic-bezier(.4,0,.2,1); z-index: 50;
+    }
+    .drawer.open { transform: translateX(0); }
+
+    .drawer-head {
+      padding: 16px; border-bottom: 1px solid var(--outline-soft);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+    }
+    .drawer-head h2 { font-size: 16px; font-weight: 700; letter-spacing: -.1px; }
+    .drawer-head p  { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+
+    .drawer-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 
     .log-item {
-      border: 1px solid #edf0f2; border-radius: 14px; padding: 10px 11px;
-      background: #fff; font-size: 13px; color: #3c4043; line-height: 1.45; white-space: pre-wrap;
+      border: 1px solid var(--outline-soft); border-radius: var(--r-sm);
+      padding: 9px 11px; font-size: 12px; color: var(--text-2); line-height: 1.5;
+      background: var(--surface-raised);
     }
-    .log-item.error   { border-color: #f5c8c5; background: #fff5f5; color: #8a1c14; }
-    .log-item.tool    { border-color: #ddd5fa; background: #faf8ff; color: #4a2ea0; }
-    .log-item.ai      { border-color: #c8e6d4; background: #f4fbf6; color: #1a5e30; }
+    .log-item.err  { border-color: var(--err-border); background: var(--err-bg); color: var(--err-text); }
+    .log-item.tool { border-color: var(--tool-border); background: var(--tool-bg); color: var(--purple); }
+    .log-item.ai   { border-color: var(--ai-border); background: var(--ai-bg); color: var(--ai-text); }
+    .log-meta { display: block; font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 3px; }
 
-    .log-meta { color: #80868b; display: block; margin-bottom: 4px; font-size: 11px; letter-spacing: 0.1px; text-transform: uppercase; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; clip: rect(0,0,0,0); overflow: hidden; }
 
-    @keyframes breathe {
-      0%   { transform: scale(0.88); }
-      50%  { transform: scale(1.05); }
-      100% { transform: scale(0.88); }
-    }
-
-    @media (max-width: 1180px) {
-      .workspace { grid-template-columns: 1fr; }
-      .voice-card { order: -1; min-height: 520px; }
-      .voice-indicator { width: min(400px, 88vw); }
-      .mic-button { width: 130px; height: 130px; }
+    @media (max-width: 640px) {
+      .shell { padding: 10px 12px 12px; }
+      .brand-sub, .vc-sub { display: none; }
+      .voice-stage { padding: 16px 12px 10px; }
+      .chips-row { padding: 8px 12px 0; }
+      .r-card-header, .r-body, .r-list { padding-left: 12px; padding-right: 12px; }
+      .feed { padding: 0 12px 12px; }
     }
   </style>
 </head>
 <body>
-  <main class="app-shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark"></div>
-        <div>
-          <h1>Workspace Executive Assistant</h1>
-          <p>Voice-first automation for Google Workspace actions</p>
-        </div>
-      </div>
-      <div class="topbar-right">
-        <div id="profilePill" class="profile-pill">
-          <img id="profileAvatar" alt="Profile avatar" />
-          <span id="profileName" class="name">Loading profile...</span>
-        </div>
-        <button id="historyToggleBtn" class="icon-btn" title="Session history">
-          <span class="visually-hidden">Open session history</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 12a9 9 0 1 0 2.64-6.36" />
-            <path d="M3 4v5h5" />
-            <path d="M12 7v5l3 2" />
-          </svg>
-        </button>
-        <button id="logoutBtn" class="action-btn danger">Log out</button>
-      </div>
-    </header>
 
-    <section class="workspace">
-      <article class="card">
-        <div class="card-header">
-          <h2 class="card-title">Prompt Ideas</h2>
-          <p class="card-subtitle">Tap a chip to copy a ready-to-say prompt for voice interaction.</p>
-        </div>
-        <div class="card-body">
-          <div id="chipGrid" class="chip-grid"></div>
-          <div class="hint">The assistant works best with natural phrases like "Draft an email to Ada…" or "Move my review meeting to 2 PM."</div>
-        </div>
-      </article>
+<main class="shell">
 
-      <article class="card voice-card">
-        <div class="card-header">
-          <h2 class="card-title">Voice Studio</h2>
-          <p class="card-subtitle">Voice is connected automatically. Start talking when you are ready.</p>
-        </div>
-        <div class="card-body voice-stage">
-          <div id="voiceIndicator" class="voice-indicator">
-            <span class="wave one"></span>
-            <span class="wave two"></span>
-            <span class="wave three"></span>
-            <button id="recordBtn" class="mic-button" disabled>Start Talking</button>
-          </div>
-          <p id="voiceStatus" class="voice-status">Socket disconnected.</p>
-          <!-- Activity badge: shows current AI state (thinking / speaking / tool call) -->
-          <div id="aiBadge" class="ai-badge" aria-live="polite">
-            <span class="badge-dot"></span>
-            <span id="aiBadgeText"></span>
-          </div>
-          <div class="controls">
-            <button id="connectBtn" class="action-btn primary">Reconnect Voice</button>
-            <button id="disconnectBtn" class="action-btn" disabled>Disconnect</button>
-          </div>
-        </div>
-      </article>
-    </section>
-  </main>
-
-  <div id="historyOverlay" class="history-overlay"></div>
-  <aside id="historyDrawer" class="history-drawer" aria-hidden="true">
-    <div class="history-header">
-      <div>
-        <h2>Session Timeline</h2>
-        <p>Connection events, voice status, and assistant notices.</p>
+  <!-- ── Topbar ────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon"></div>
+      <div class="brand-text">
+        <span class="brand-name">Workspace Assistant</span>
+        <span class="brand-sub">Voice-first Google Workspace automation</span>
       </div>
-      <button id="historyCloseBtn" class="icon-btn" title="Close history">
-        <span class="visually-hidden">Close session history</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M18 6 6 18" />
-          <path d="m6 6 12 12" />
+    </div>
+    <div class="topbar-right">
+      <div id="profilePill" class="profile-pill">
+        <img id="profileAvatar" alt="" />
+        <span id="profileName" class="name">Loading…</span>
+      </div>
+      <!-- Theme toggle -->
+      <button id="themeBtn" class="theme-btn" title="Toggle dark mode" aria-label="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
         </svg>
       </button>
+      <button id="historyBtn" class="icon-btn" title="Session history" aria-label="Open session history">
+        <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+      </button>
+      <button id="logoutBtn" class="btn btn-danger">Sign out</button>
     </div>
-    <div class="history-body">
-      <div id="logList" class="log-list"></div>
+  </header>
+
+  <!-- ── Voice Studio (full-width) ────────────────────────────────── -->
+  <article class="voice-card" role="main">
+
+    <!-- Card header -->
+    <div class="vc-header">
+      <div class="vc-header-left">
+        <h1 class="vc-title">Voice Studio</h1>
+        <p class="vc-sub">Speak naturally — your assistant is always listening</p>
+      </div>
+      <div class="vc-header-right">
+        <div id="connDot" class="conn-dot" title="Disconnected"></div>
+        <button id="connectBtn"    class="btn btn-ghost" style="font-size:12px;padding:6px 12px;">Reconnect</button>
+        <button id="disconnectBtn" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;" disabled>Disconnect</button>
+      </div>
     </div>
-  </aside>
 
-  <script>
-    const API_BASE = window.location.origin;
-    const SESSION_KEY = 'gw_agent_session_id';
-    const AUDIO_RECORDER_WORKLET_URL = '/static/audio-capture-worklet.js';
-    const AUDIO_PLAYER_WORKLET_URL  = '/static/pcm-player-processor.js';
+    <!-- Suggestion chips -->
+    <div class="chips-row" id="chipsRow" role="list" aria-label="Voice prompt suggestions"></div>
 
-    const PROMPTS = [
-      "Give me my daily executive briefing.",
-      "What is on my agenda today?",
-      "Create a task to submit the expense report by Friday at 4 PM.",
-      "Find my task about tax filing.",
-      "Draft an email to Ada saying I will join 10 minutes late.",
-      "Schedule a meeting with John and Sarah tomorrow at 2 PM.",
-      "Add Tunde to my sprint planning event.",
-      "Show my unread emails from this morning.",
-      "Move my budget review meeting to 3 PM tomorrow.",
-      "Delete my weekly sync event."
-    ];
+    <!-- Voice orb + controls -->
+    <div class="voice-stage">
+      <div class="orb-wrap" id="orbWrap">
+        <span class="ring ring-a"></span>
+        <span class="ring ring-b"></span>
+        <span class="ring ring-c"></span>
+        <button id="micBtn" class="mic-btn" disabled aria-label="Microphone" aria-pressed="false">
+          <!-- Mic SVG (unmuted) -->
+          <svg id="micIcon" class="mic-icon" viewBox="0 0 24 24" fill="none"
+               stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M5 10a7 7 0 0 0 14 0"/>
+            <line x1="12" y1="21" x2="12" y2="17"/>
+            <line x1="9"  y1="21" x2="15" y2="21"/>
+          </svg>
+          <span class="mic-label" id="micLabel">Start</span>
+        </button>
+      </div>
 
-    const profileAvatar    = document.getElementById('profileAvatar');
-    const profileName      = document.getElementById('profileName');
-    const logoutBtn        = document.getElementById('logoutBtn');
-    const connectBtn       = document.getElementById('connectBtn');
-    const disconnectBtn    = document.getElementById('disconnectBtn');
-    const recordBtn        = document.getElementById('recordBtn');
-    const historyToggleBtn = document.getElementById('historyToggleBtn');
-    const historyCloseBtn  = document.getElementById('historyCloseBtn');
-    const historyDrawer    = document.getElementById('historyDrawer');
-    const historyOverlay   = document.getElementById('historyOverlay');
-    const voiceStatus      = document.getElementById('voiceStatus');
-    const logList          = document.getElementById('logList');
-    const chipGrid         = document.getElementById('chipGrid');
-    const voiceIndicator   = document.getElementById('voiceIndicator');
-    const aiBadge          = document.getElementById('aiBadge');
-    const aiBadgeText      = document.getElementById('aiBadgeText');
+      <div class="status-row">
+        <p class="status-text" id="statusText" aria-live="polite">Disconnected</p>
+        <div class="ai-badge" id="aiBadge" aria-live="polite">
+          <span class="badge-dot"></span>
+          <span id="aiBadgeText"></span>
+        </div>
+      </div>
+    </div>
 
-    let sessionId = null;
-    let ws = null;
-    let playbackContext = null;
-    let audioPlayerNode = null;
-    let recordingContext = null;
-    let microphoneStream = null;
-    let microphoneSource = null;
-    let monitoringGain = null;
-    let processor = null;
-    let playerWorkletLoaded = false;
-    let workletModuleLoaded = false;
-    let isRecording = false;
-    let manualDisconnect = false;
-    let fatalSocketError = false;
-    let reconnectTimer = null;
-    let reconnectAttempts = 0;
-    let startRecordingOnConnect = false;
+    <!-- Response feed -->
+    <section class="response-section" id="responseSection">
+      <div class="response-header">
+        <span class="response-label">Assistant responses</span>
+        <button class="clear-btn" id="clearFeedBtn">Clear</button>
+      </div>
+      <div class="feed" id="feed" role="log" aria-live="polite" aria-label="Assistant response feed">
+        <div class="feed-empty" id="feedEmpty">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Responses will appear here during your conversation
+        </div>
+      </div>
+    </section>
 
-    // ── AI state machine ──────────────────────────────────────────────────
-    // Tracks what the AI is currently doing so the UI can react correctly.
-    // States: 'idle' | 'listening' | 'thinking' | 'tool' | 'speaking'
-    let aiState = 'idle';
+  </article>
 
-    function setAiState(state, label) {
-      aiState = state;
-      // Update wave ring visual class
-      voiceIndicator.classList.remove('thinking', 'speaking');
-      if (state === 'thinking' || state === 'tool') voiceIndicator.classList.add('thinking');
-      if (state === 'speaking') voiceIndicator.classList.add('speaking');
+</main>
 
-      // Update badge
-      aiBadge.classList.remove('visible', 'tool', 'speaking');
-      if (state !== 'idle' && state !== 'listening') {
-        aiBadgeText.textContent = label || state;
-        aiBadge.classList.add('visible');
-        if (state === 'tool')    aiBadge.classList.add('tool');
-        if (state === 'speaking') aiBadge.classList.add('speaking');
-      }
+<!-- ── History overlay & drawer ─────────────────────────────────── -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer" aria-label="Session history" aria-hidden="true">
+  <div class="drawer-head">
+    <div>
+      <h2>Session Timeline</h2>
+      <p>Connection events, tool calls, and notices</p>
+    </div>
+    <button class="icon-btn" id="closeDrawerBtn" aria-label="Close history">
+      <svg viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="logList"></div>
+</aside>
+
+<script>
+/* ===================================================================
+   CONFIG
+   =================================================================== */
+const API_BASE     = window.location.origin;
+const SESSION_KEY  = 'gw_agent_session_id';
+const RECORDER_URL = '/static/audio-capture-worklet.js';
+const PLAYER_URL   = '/static/pcm-player-processor.js';
+
+const CHIPS = [
+  "What's on my agenda today?",
+  'Give me my daily briefing.',
+  'Show my open tasks.',
+  'Show unread emails.',
+  'Create a task for me.',
+  'Schedule a meeting.',
+  'Draft an email.',
+  'Move my next meeting.',
+];
+
+
+/* ===================================================================
+   DOM REFS
+   =================================================================== */
+const profileAvatar  = document.getElementById('profileAvatar');
+const profileName    = document.getElementById('profileName');
+const logoutBtn      = document.getElementById('logoutBtn');
+const connectBtn     = document.getElementById('connectBtn');
+const disconnectBtn  = document.getElementById('disconnectBtn');
+const micBtn         = document.getElementById('micBtn');
+const micIcon        = document.getElementById('micIcon');
+const micLabel       = document.getElementById('micLabel');
+const orbWrap        = document.getElementById('orbWrap');
+const statusText     = document.getElementById('statusText');
+const aiBadge        = document.getElementById('aiBadge');
+const aiBadgeText    = document.getElementById('aiBadgeText');
+const connDot        = document.getElementById('connDot');
+const historyBtn     = document.getElementById('historyBtn');
+const themeBtn       = document.getElementById('themeBtn');
+const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+const drawer         = document.getElementById('drawer');
+const overlay        = document.getElementById('overlay');
+const logList        = document.getElementById('logList');
+const feed           = document.getElementById('feed');
+const feedEmpty      = document.getElementById('feedEmpty');
+const chipsRow       = document.getElementById('chipsRow');
+const clearFeedBtn   = document.getElementById('clearFeedBtn');
+
+/* ===================================================================
+   THEME  (MD3 light / dark, respects prefers-color-scheme)
+   =================================================================== */
+const THEME_KEY = 'gw_agent_theme';
+
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  themeBtn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  themeBtn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+}
+
+function initTheme() {
+  const stored = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(stored !== null ? stored === 'dark' : prefersDark);
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = !isDark;
+  applyTheme(next);
+  localStorage.setItem(THEME_KEY, next ? 'dark' : 'light');
+}
+
+// React to OS-level changes if user hasn't manually picked
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  if (!localStorage.getItem(THEME_KEY)) applyTheme(e.matches);
+});
+
+initTheme();
+
+/* ===================================================================
+   STATE
+   =================================================================== */
+let sessionId = null;
+let ws = null;
+let playCtx = null, playerNode = null, playerLoaded = false;
+let recCtx = null, micStream = null, micSrc = null, monGain = null, recProc = null;
+let recLoaded = false;
+let isMicOn = false;
+let manualDisc = false, fatalErr = false;
+let reconnTimer = null, reconnAttempts = 0;
+
+/* ===================================================================
+   CONNECTION DOT
+   =================================================================== */
+function setConnState(state) { // 'disconnected'|'connecting'|'connected'|'error'
+  connDot.className = 'conn-dot ' + (state === 'connected' ? 'connected' : state === 'connecting' ? 'connecting' : state === 'error' ? 'error' : '');
+  connDot.title = state.charAt(0).toUpperCase() + state.slice(1);
+}
+
+/* ===================================================================
+   AI BADGE + ORB STATE
+   state: 'idle'|'listening'|'thinking'|'tool'|'speaking'
+   =================================================================== */
+function setAiState(state, label) {
+  orbWrap.classList.remove('listening', 'speaking', 'thinking', 'muted');
+  aiBadge.classList.remove('show', 'listen', 'think', 'tool', 'speak');
+
+  if (state === 'listening') { orbWrap.classList.add('listening'); }
+  if (state === 'speaking')  { orbWrap.classList.add('speaking');  }
+  if (state === 'thinking' || state === 'tool') { orbWrap.classList.add('thinking'); }
+  if (state === 'idle' && isMicOn === false) { orbWrap.classList.add('muted'); }
+
+  if (state !== 'idle') {
+    aiBadgeText.textContent = label || state;
+    const cls = { listening:'listen', thinking:'think', tool:'tool', speaking:'speak' }[state] || 'listen';
+    aiBadge.classList.add('show', cls);
+  }
+}
+
+/* ===================================================================
+   LOGGING
+   =================================================================== */
+function addLog(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = 'log-item' + (type ? ' ' + type : '');
+  const ts = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  el.innerHTML = `<span class="log-meta">${ts}</span>${msg}`;
+  logList.prepend(el);
+}
+
+function setStatus(msg) { statusText.textContent = msg; }
+
+/* ===================================================================
+   RESPONSE FEED
+   =================================================================== */
+function hideFeedEmpty() {
+  if (feedEmpty) feedEmpty.style.display = 'none';
+}
+
+function parseResponseText(text) {
+  // Detect numbered list: lines starting with "1." "2)" etc.
+  const numberedRe = /^(\d+)[.)]\s+(.+)/;
+  // Detect bullet list: lines starting with -  •  *
+  const bulletRe   = /^[-•*]\s+(.+)/;
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  const numbered = lines.filter(l => numberedRe.test(l));
+  const bulleted  = lines.filter(l => bulletRe.test(l));
+
+  if (numbered.length >= 2) {
+    return {
+      type: 'numbered',
+      preamble: lines.filter(l => !numberedRe.test(l)).join(' ').trim(),
+      items: numbered.map(l => { const m = l.match(numberedRe); return { n: m[1], text: m[2] }; }),
+    };
+  }
+  if (bulleted.length >= 2) {
+    return {
+      type: 'bulleted',
+      preamble: lines.filter(l => !bulletRe.test(l)).join(' ').trim(),
+      items: bulleted.map(l => { const m = l.match(bulletRe); return m[1]; }),
+    };
+  }
+  return { type: 'plain', text };
+}
+
+function guessTag(text) {
+  const t = text.toLowerCase();
+  if (/\b(task|to.?do|complete|due|deadline)\b/.test(t)) return 'task';
+  if (/\b(meeting|event|calendar|schedule|appointment|pm|am|tomorrow|today)\b/.test(t)) return 'event';
+  if (/\b(email|inbox|unread|subject|from:|sent)\b/.test(t)) return 'email';
+  return 'info';
+}
+
+function buildResponseCard(text) {
+  const parsed = parseResponseText(text);
+  const tag = guessTag(text);
+  const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const card = document.createElement('div');
+  card.className = 'r-card';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'r-card-header';
+  header.innerHTML = `<span class="r-tag ${tag}">${tag.charAt(0).toUpperCase()+tag.slice(1)}</span><span class="r-time">${ts}</span>`;
+  card.appendChild(header);
+
+  if (parsed.type === 'numbered' || parsed.type === 'bulleted') {
+    if (parsed.preamble) {
+      const pre = document.createElement('div');
+      pre.className = 'r-body';
+      pre.textContent = parsed.preamble;
+      card.appendChild(pre);
     }
+    const ul = document.createElement('ul');
+    ul.className = 'r-list';
+    parsed.items.forEach((item, i) => {
+      const li = document.createElement('li');
+      li.className = 'r-list-item';
+      const bulletClass = parsed.type === 'numbered' ? 'num' : 'dot';
+      const bulletLabel = parsed.type === 'numbered' ? (item.n || (i + 1)) : '✓';
+      const itemText    = parsed.type === 'numbered' ? item.text : item;
 
-    // ── Logging ───────────────────────────────────────────────────────────
-    function addLog(message, type = 'info') {
-      const item = document.createElement('div');
-      item.className = `log-item ${type === 'error' ? 'error' : type === 'tool' ? 'tool' : type === 'ai' ? 'ai' : ''}`.trim().replace(/\s+/, ' ');
-      const stamp = new Date().toLocaleTimeString();
-      item.innerHTML = `<span class="log-meta">${stamp}</span>${message}`;
-      logList.prepend(item);
+      // Try to split meta info (e.g. "· Due Friday")
+      const [main, ...meta] = itemText.split(/\s[·•|]\s/);
+      li.innerHTML = `
+        <span class="r-bullet ${bulletClass}">${bulletLabel}</span>
+        <span class="r-item-text">
+          <span>${main.trim()}</span>
+          ${meta.length ? `<span class="r-item-meta">${meta.join(' · ')}</span>` : ''}
+        </span>`;
+      ul.appendChild(li);
+    });
+    card.appendChild(ul);
+  } else {
+    const body = document.createElement('div');
+    body.className = 'r-body';
+    body.textContent = text;
+    card.appendChild(body);
+  }
+
+  return card;
+}
+
+function addToolCard(toolNames) {
+  const el = document.createElement('div');
+  el.className = 'tool-card';
+  const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  el.innerHTML = `
+    <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+    Calling tool&nbsp;<span class="tool-names">${toolNames.join(', ')}</span>
+    <span style="margin-left:auto;font-size:10px;color:var(--text-3);font-weight:400;">${ts}</span>`;
+  hideFeedEmpty();
+  feed.appendChild(el);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function addResponseCard(text) {
+  if (!text || !text.trim()) return;
+  const card = buildResponseCard(text.trim());
+  hideFeedEmpty();
+  feed.appendChild(card);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+/* ===================================================================
+   AUDIO PLAYBACK
+   =================================================================== */
+async function ensurePlayCtx() {
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) throw new Error('Web Audio not supported');
+  if (!playCtx || playCtx.state === 'closed') playCtx = new C({ sampleRate: 24000 });
+  if (playCtx.state === 'suspended') await playCtx.resume();
+  return playCtx;
+}
+
+async function ensurePlayerNode() {
+  if (playerNode) return playerNode;
+  const ctx = await ensurePlayCtx();
+  if (!ctx.audioWorklet) return null;
+  if (!playerLoaded) { await ctx.audioWorklet.addModule(PLAYER_URL); playerLoaded = true; }
+  playerNode = new AudioWorkletNode(ctx, 'pcm-player-processor');
+  playerNode.connect(ctx.destination);
+  return playerNode;
+}
+
+function clearPlayback() {
+  if (playerNode?.port) playerNode.port.postMessage({ command: 'endOfAudio' });
+}
+
+async function playPcmBuffer(raw) {
+  if (!raw || raw.byteLength === 0) return;
+  const node = await ensurePlayerNode();
+  if (node) { node.port.postMessage(raw, [raw]); return; }
+  // Fallback
+  const ctx = await ensurePlayCtx();
+  const pcm = new Int16Array(raw);
+  const f32 = new Float32Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) f32[i] = pcm[i] / 0x8000;
+  const buf = ctx.createBuffer(1, f32.length, 24000);
+  buf.copyToChannel(f32, 0);
+  const src = ctx.createBufferSource();
+  src.buffer = buf; src.connect(ctx.destination); src.start();
+}
+
+/* ===================================================================
+   AUDIO RECORDING
+   =================================================================== */
+async function ensureRecCtx() {
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) throw new Error('Web Audio not supported');
+  if (!recCtx || recCtx.state === 'closed') recCtx = new C({ sampleRate: 16000 });
+  if (recCtx.state === 'suspended') await recCtx.resume();
+  return recCtx;
+}
+
+// Keep the recording context from auto-suspending (browser may suspend it
+// when the tab is in background or when AI audio is playing).
+let recContextKeepAlive = null;
+function startRecCtxWatchdog() {
+  if (recContextKeepAlive) return;
+  recContextKeepAlive = setInterval(async () => {
+    if (!isMicOn || !recCtx) return;
+    if (recCtx.state === 'suspended') {
+      try { await recCtx.resume(); }
+      catch (_) {}
     }
+  }, 800);
+}
+function stopRecCtxWatchdog() {
+  if (recContextKeepAlive) { clearInterval(recContextKeepAlive); recContextKeepAlive = null; }
+}
 
-    function setVoiceStatus(message) { voiceStatus.textContent = message; }
+function float32ToPcm16(float32) {
+  const out = new Int16Array(float32.length);
+  for (let i = 0; i < float32.length; i++) {
+    const s = Math.max(-1, Math.min(1, float32[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
 
-    // ── Reconnect logic ───────────────────────────────────────────────────
-    function clearReconnectTimer() {
-      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-    }
+function sendAudioChunk(float32) {
+  if (!isMicOn || !ws || ws.readyState !== WebSocket.OPEN) return;
+  const pcm = float32ToPcm16(float32);
+  try { ws.send(pcm.buffer); }
+  catch (_) {}
+}
 
-    function scheduleReconnect() {
-      if (manualDisconnect || reconnectTimer) return;
-      reconnectAttempts += 1;
-      const delay = Math.min(1000 * (2 ** Math.min(reconnectAttempts - 1, 4)), 15000);
-      setVoiceStatus(`Connection lost. Reconnecting in ${Math.ceil(delay / 1000)}s…`);
-      reconnectTimer = setTimeout(() => { reconnectTimer = null; connectSocket(); }, delay);
-    }
+async function startMic() {
+  if (isMicOn) return;
+  const ctx = await ensureRecCtx();
+  micStream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  });
+  micSrc  = ctx.createMediaStreamSource(micStream);
+  monGain = ctx.createGain(); monGain.gain.value = 0;
 
-    function isModelConfigurationError(message) {
-      const n = String(message || '').toLowerCase();
-      return (
-        (n.includes('bidigeneratecontent') && n.includes('not found')) ||
-        (n.includes('live') && n.includes('not supported')) ||
-        (n.includes('model') && n.includes('not found for api version'))
-      );
-    }
+  let useWorklet = false;
+  if (ctx.audioWorklet && window.AudioWorkletNode) {
+    if (!recLoaded) {
+      try { await ctx.audioWorklet.addModule(RECORDER_URL); recLoaded = true; useWorklet = true; }
+      catch (_) { useWorklet = false; }
+    } else { useWorklet = true; }
+  }
 
-    // ── Audio playback helpers ────────────────────────────────────────────
-    function clearPlaybackBuffer() {
-      if (audioPlayerNode && audioPlayerNode.port) {
-        audioPlayerNode.port.postMessage({ command: 'endOfAudio' });
-      }
-    }
+  if (useWorklet) {
+    recProc = new AudioWorkletNode(ctx, 'pcm-capture-processor');
+    recProc.port.onmessage = e => sendAudioChunk(e.data);
+  } else {
+    recProc = ctx.createScriptProcessor(4096, 1, 1);
+    recProc.onaudioprocess = e => sendAudioChunk(e.inputBuffer.getChannelData(0));
+  }
 
-    // ── Drawer helpers ────────────────────────────────────────────────────
-    function openHistoryDrawer()  { historyDrawer.classList.add('open'); historyOverlay.classList.add('open'); historyDrawer.setAttribute('aria-hidden','false'); }
-    function closeHistoryDrawer() { historyDrawer.classList.remove('open'); historyOverlay.classList.remove('open'); historyDrawer.setAttribute('aria-hidden','true'); }
-    function toggleHistoryDrawer() { historyDrawer.classList.contains('open') ? closeHistoryDrawer() : openHistoryDrawer(); }
+  micSrc.connect(recProc);
+  recProc.connect(monGain);
+  monGain.connect(ctx.destination);
 
-    // ── Recording visual state ────────────────────────────────────────────
-    function updateRecordingVisualState() {
-      if (isRecording) {
-        recordBtn.classList.add('recording');
-        voiceIndicator.classList.add('recording');
-        recordBtn.textContent = 'Stop Talking';
-        setAiState('listening', 'Listening…');
-      } else {
-        recordBtn.classList.remove('recording');
-        voiceIndicator.classList.remove('recording');
-        recordBtn.textContent = 'Start Talking';
-        if (aiState === 'listening') setAiState('idle');
-      }
-    }
+  isMicOn = true;
+  startRecCtxWatchdog();
 
-    // ── Session init ──────────────────────────────────────────────────────
-    function captureSessionFromUrl() {
-      const url = new URL(window.location.href);
-      const incoming = url.searchParams.get('session_id');
-      if (!incoming) return null;
-      localStorage.setItem(SESSION_KEY, incoming);
-      url.searchParams.delete('session_id');
-      window.history.replaceState({}, '', url.toString());
-      return incoming;
-    }
+  // Signal mic active to backend
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'mic_start' }));
+  }
 
-    function buildPromptChips() {
-      PROMPTS.forEach((prompt) => {
-        const chip = document.createElement('button');
-        chip.className = 'prompt-chip';
-        chip.type = 'button';
-        chip.textContent = prompt;
-        chip.addEventListener('click', async () => {
-          try {
-            await navigator.clipboard.writeText(prompt);
-            addLog(`Prompt copied: "${prompt}"`);
-          } catch (_) {
-            addLog(`Try saying: "${prompt}"`);
-          }
-        });
-        chipGrid.appendChild(chip);
-      });
-    }
+  updateMicBtn();
+  setStatus('Listening…');
+  setAiState('listening', 'Listening…');
+  addLog('Microphone on.');
+}
 
-    async function fetchProfile() {
-      const response = await fetch(`${API_BASE}/me?session_id=${encodeURIComponent(sessionId)}`);
-      if (!response.ok) {
-        localStorage.removeItem(SESSION_KEY);
-        window.location.replace('/ui');
-        return null;
-      }
-      return response.json();
-    }
+function stopMic() {
+  isMicOn = false;
+  stopRecCtxWatchdog();
 
-    // ── Audio encoding/decoding ───────────────────────────────────────────
-    function arrayBufferToBase64(buffer) {
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      const chunk = 0x8000;
-      for (let i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-      }
-      return btoa(binary);
-    }
+  if (recProc) { if (recProc.port) recProc.port.onmessage = null; recProc.disconnect(); recProc = null; }
+  if (monGain)  { monGain.disconnect();  monGain  = null; }
+  if (micSrc)   { micSrc.disconnect();   micSrc   = null; }
+  if (micStream){ micStream.getTracks().forEach(t => t.stop()); micStream = null; }
 
-    function base64ToArrayBuffer(base64) {
-      const binary = atob(base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-      return bytes.buffer;
-    }
+  // Signal mic inactive to backend
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    try { ws.send(JSON.stringify({ type: 'mic_stop' })); } catch (_) {}
+  }
 
-    function floatTo16BitPCM(float32Array) {
-      const buffer = new Int16Array(float32Array.length);
-      for (let i = 0; i < float32Array.length; i += 1) {
-        const sample = Math.max(-1, Math.min(1, float32Array[i]));
-        buffer[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-      }
-      return buffer;
-    }
+  updateMicBtn();
+  setAiState('idle');
+  if (ws && ws.readyState === WebSocket.OPEN) setStatus('Connected. Tap mic to speak.');
+  addLog('Microphone muted.');
+}
 
-    function handleFloatAudioChunk(floatSamples) {
-      if (!isRecording || !ws || ws.readyState !== WebSocket.OPEN) return;
-      if (!floatSamples || floatSamples.length === 0) return;
-      const pcm16 = floatTo16BitPCM(floatSamples);
-      try {
-        ws.send(pcm16.buffer);
-      } catch (_) {
-        ws.send(JSON.stringify({ audio_chunk: arrayBufferToBase64(pcm16.buffer) }));
-      }
-    }
+function updateMicBtn() {
+  micBtn.setAttribute('aria-pressed', isMicOn ? 'true' : 'false');
+  if (isMicOn) {
+    micBtn.classList.remove('muted');
+    micIcon.innerHTML = `<rect x="9" y="2" width="6" height="12" rx="3"/>
+      <path d="M5 10a7 7 0 0 0 14 0"/>
+      <line x1="12" y1="21" x2="12" y2="17"/>
+      <line x1="9" y1="21" x2="15" y2="21"/>`;
+    micLabel.textContent = 'Mute';
+  } else {
+    micBtn.classList.add('muted');
+    micIcon.innerHTML = `<line x1="1" y1="1" x2="23" y2="23"/>
+      <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+      <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+      <line x1="12" y1="19" x2="12" y2="23"/>
+      <line x1="8" y1="23" x2="16" y2="23"/>`;
+    micLabel.textContent = 'Unmute';
+  }
+}
 
-    // ── Audio context helpers ─────────────────────────────────────────────
-    async function ensureRecordingContext() {
-      const Ctor = window.AudioContext || window.webkitAudioContext;
-      if (!Ctor) throw new Error('Web Audio API is not supported in this browser.');
-      if (!recordingContext || recordingContext.state === 'closed') recordingContext = new Ctor({ sampleRate: 16000 });
-      if (recordingContext.state === 'suspended') await recordingContext.resume();
-      return recordingContext;
-    }
+/* ===================================================================
+   RECONNECT
+   =================================================================== */
+function clearReconnTimer() { if (reconnTimer) { clearTimeout(reconnTimer); reconnTimer = null; } }
+function scheduleReconn() {
+  if (manualDisc || reconnTimer) return;
+  reconnAttempts++;
+  const delay = Math.min(1000 * (2 ** Math.min(reconnAttempts - 1, 4)), 16000);
+  setStatus(`Reconnecting in ${Math.ceil(delay/1000)}s…`);
+  reconnTimer = setTimeout(() => { reconnTimer = null; connectSocket(); }, delay);
+}
 
-    async function ensurePlaybackContext() {
-      const Ctor = window.AudioContext || window.webkitAudioContext;
-      if (!Ctor) throw new Error('Web Audio API is not supported in this browser.');
-      if (!playbackContext || playbackContext.state === 'closed') playbackContext = new Ctor({ sampleRate: 24000 });
-      if (playbackContext.state === 'suspended') await playbackContext.resume();
-      return playbackContext;
-    }
+function isModelErr(msg) {
+  const n = String(msg||'').toLowerCase();
+  return (n.includes('bidigeneratecontent') && n.includes('not found'))
+    || (n.includes('live') && n.includes('not supported'))
+    || (n.includes('model') && n.includes('not found for api version'));
+}
 
-    async function loadRecorderWorkletIfSupported(context) {
-      if (workletModuleLoaded) return true;
-      if (!context.audioWorklet || !window.AudioWorkletNode) return false;
-      try {
-        await context.audioWorklet.addModule(AUDIO_RECORDER_WORKLET_URL);
-        workletModuleLoaded = true;
-        return true;
-      } catch (error) {
-        addLog(`AudioWorklet unavailable, using fallback path (${error.message || String(error)}).`);
-        return false;
-      }
-    }
+/* ===================================================================
+   WEBSOCKET
+   =================================================================== */
+function disconnectSocket(manual = true) {
+  manualDisc = manual;
+  clearReconnTimer();
+  stopMic();
+  clearPlayback();
+  setAiState('idle');
+  if (ws) { ws.close(); ws = null; }
+  connectBtn.disabled = false; disconnectBtn.disabled = true; micBtn.disabled = true;
+  setConnState('disconnected');
+  setStatus('Disconnected.');
+}
 
-    async function ensureAudioPlayerNode() {
-      if (audioPlayerNode) return audioPlayerNode;
-      const context = await ensurePlaybackContext();
-      if (!context.audioWorklet || !window.AudioWorkletNode) return null;
-      if (!playerWorkletLoaded) {
-        await context.audioWorklet.addModule(AUDIO_PLAYER_WORKLET_URL);
-        playerWorkletLoaded = true;
-      }
-      audioPlayerNode = new AudioWorkletNode(context, 'pcm-player-processor');
-      audioPlayerNode.connect(context.destination);
-      return audioPlayerNode;
-    }
+function connectSocket() {
+  if (!sessionId) { addLog('No session — redirecting to sign in.', 'err'); window.location.replace('/ui'); return; }
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  manualDisc = false; fatalErr = false;
+  clearReconnTimer();
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws?session_id=${encodeURIComponent(sessionId)}`);
+  ws.binaryType = 'arraybuffer';
+  connectBtn.disabled = true; disconnectBtn.disabled = true; micBtn.disabled = true;
+  setConnState('connecting'); setStatus('Connecting…');
 
-    async function playPcm24kFromArrayBuffer(raw) {
-      if (!raw || raw.byteLength === 0) return;
-      const playerNode = await ensureAudioPlayerNode();
-      if (playerNode) {
-        playerNode.port.postMessage(raw, [raw]);
-        return;
-      }
-      // Fallback for browsers without AudioWorklet support.
-      const pcm16 = new Int16Array(raw);
-      const context = await ensurePlaybackContext();
-      const float32 = new Float32Array(pcm16.length);
-      for (let i = 0; i < pcm16.length; i += 1) float32[i] = pcm16[i] / 0x8000;
-      const audioBuffer = context.createBuffer(1, float32.length, 24000);
-      audioBuffer.copyToChannel(float32, 0);
-      const source = context.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(context.destination);
-      source.start();
-    }
-
-    async function playPcm24kBase64(base64Chunk) {
-      await playPcm24kFromArrayBuffer(base64ToArrayBuffer(base64Chunk));
-    }
-
-    // ── Recording start/stop ──────────────────────────────────────────────
-    async function startRecording() {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      if (isRecording) return;
-      const context = await ensureRecordingContext();
-      microphoneStream = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
-      microphoneSource = context.createMediaStreamSource(microphoneStream);
-      monitoringGain = context.createGain();
-      monitoringGain.gain.value = 0;
-
-      const useWorklet = await loadRecorderWorkletIfSupported(context);
-      if (useWorklet) {
-        processor = new AudioWorkletNode(context, 'pcm-capture-processor');
-        processor.port.onmessage = (event) => handleFloatAudioChunk(event.data);
-      } else {
-        processor = context.createScriptProcessor(4096, 1, 1);
-        processor.onaudioprocess = (event) => handleFloatAudioChunk(event.inputBuffer.getChannelData(0));
-      }
-
-      microphoneSource.connect(processor);
-      processor.connect(monitoringGain);
-      monitoringGain.connect(context.destination);
-      isRecording = true;
-      updateRecordingVisualState();
-      setVoiceStatus('Listening…');
-      addLog('Microphone streaming started.');
-    }
-
-    function stopRecording() {
-      isRecording = false;
-      updateRecordingVisualState();
-      if (processor) {
-        if (processor.port) processor.port.onmessage = null;
-        processor.disconnect();
-        processor = null;
-      }
-      if (monitoringGain)   { monitoringGain.disconnect();   monitoringGain = null; }
-      if (microphoneSource) { microphoneSource.disconnect(); microphoneSource = null; }
-      if (microphoneStream) { microphoneStream.getTracks().forEach((t) => t.stop()); microphoneStream = null; }
-      if (ws && ws.readyState === WebSocket.OPEN) setVoiceStatus('Connected. Tap Start Talking to resume.');
-    }
-
-    // ── Socket connection ─────────────────────────────────────────────────
-    function disconnectSocket() {
-      manualDisconnect = true;
-      clearReconnectTimer();
-      stopRecording();
-      clearPlaybackBuffer();
-      setAiState('idle');
-      if (ws) { ws.close(); ws = null; }
-      connectBtn.disabled = false;
-      disconnectBtn.disabled = true;
-      recordBtn.disabled = true;
-      setVoiceStatus('Socket disconnected.');
-    }
-
-    function connectSocket() {
-      if (!sessionId) { addLog('Missing session. Please sign in again.', 'error'); window.location.replace('/ui'); return; }
-      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
-      manualDisconnect = false;
-      fatalSocketError = false;
-      clearReconnectTimer();
-      const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      ws = new WebSocket(`${proto}://${window.location.host}/ws?session_id=${encodeURIComponent(sessionId)}`);
-      ws.binaryType = 'arraybuffer';
-      connectBtn.disabled = true;
-      disconnectBtn.disabled = true;
-      recordBtn.disabled = true;
-      setVoiceStatus('Connecting voice…');
-
-      ws.onopen = async () => {
-        reconnectAttempts = 0;
-        connectBtn.disabled = true;
-        disconnectBtn.disabled = false;
-        recordBtn.disabled = false;
-        setVoiceStatus('Connected. Waiting for AI to be ready…');
-        addLog('Voice socket connected.');
-        if (startRecordingOnConnect) {
-          startRecordingOnConnect = false;
-          try { await startRecording(); }
-          catch (error) { addLog(`Microphone error: ${error.message || String(error)}`, 'error'); }
-        }
-      };
-
-      ws.onmessage = async (event) => {
-        // ── Binary = PCM audio from AI ────────────────────────────────────
-        if (event.data instanceof ArrayBuffer) {
-          if (aiState !== 'speaking') setAiState('speaking', 'AI is speaking…');
-          await playPcm24kFromArrayBuffer(event.data);
-          return;
-        }
-        if (event.data instanceof Blob) {
-          if (aiState !== 'speaking') setAiState('speaking', 'AI is speaking…');
-          await playPcm24kFromArrayBuffer(await event.data.arrayBuffer());
-          return;
-        }
-
-        // ── Text JSON = status / control messages ─────────────────────────
-        let payload;
-        try { payload = JSON.parse(event.data); }
-        catch (_) { addLog('Received unexpected non-JSON text payload from voice server.', 'error'); return; }
-
-        if (payload.error) {
-          addLog(`Server error: ${payload.error}`, 'error');
-          if (isModelConfigurationError(payload.error)) {
-            fatalSocketError = true;
-            setVoiceStatus('Voice model unavailable. Set GEMINI_MODEL=gemini-live-2.5-flash-preview and restart.');
-            if (ws && ws.readyState === WebSocket.OPEN) ws.close(1011, 'Unsupported live model.');
-            return;
-          }
-          setAiState('idle');
-          setVoiceStatus('Voice server error. Reconnecting…');
-          return;
-        }
-
-        // ── Server-side events forwarded by voice.py ──────────────────────
-        switch (payload.type) {
-          case 'ready':
-            // Gemini live session is fully set up and ready for audio.
-            setVoiceStatus('Connected. Tap Start Talking.');
-            addLog('AI session ready.');
-            setAiState('idle');
-            break;
-
-          case 'tool_calling': {
-            // One or more workspace tools are being executed server-side.
-            const names = (payload.tools || []).join(', ');
-            setAiState('tool', `Calling: ${names}`);
-            setVoiceStatus(`AI is working… (${names})`);
-            addLog(`Tool call: ${names}`, 'tool');
-            break;
-          }
-
-          case 'tool_done': {
-            // Tools finished; AI will now synthesize a response.
-            const names = (payload.tools || []).join(', ');
-            setAiState('thinking', 'AI is thinking…');
-            setVoiceStatus('AI is composing a response…');
-            addLog(`Tool done: ${names}`, 'tool');
-            break;
-          }
-
-          case 'interrupted':
-            // User barged in — flush the playback buffer so stale AI audio
-            // doesn't keep playing over the user's next utterance.
-            clearPlaybackBuffer();
-            setAiState('listening', 'Listening…');
-            setVoiceStatus('Listening…');
-            addLog('AI interrupted by user speech.');
-            break;
-
-          case 'turn_complete':
-            // AI finished its current spoken turn.
-            setAiState('idle');
-            if (isRecording) {
-              setVoiceStatus('Listening…');
-            } else {
-              setVoiceStatus('Connected. Tap Start Talking.');
-            }
-            addLog('AI turn complete.', 'ai');
-            break;
-
-          case 'text':
-            // Transcript text from the model (not always present in audio-only mode).
-            if (payload.text && payload.text.trim()) {
-              addLog(`AI: ${payload.text.trim()}`, 'ai');
-            }
-            break;
-
-          default:
-            // Backward-compatible base64 audio chunk path.
-            if (payload.audio_chunk) {
-              if (aiState !== 'speaking') setAiState('speaking', 'AI is speaking…');
-              await playPcm24kBase64(payload.audio_chunk);
-            }
-            break;
-        }
-      };
-
-      ws.onerror = () => { addLog('Voice socket transport error.', 'error'); };
-
-      ws.onclose = (event) => {
-        connectBtn.disabled = false;
-        disconnectBtn.disabled = true;
-        recordBtn.disabled = true;
-        stopRecording();
-        clearPlaybackBuffer();
+  ws.onopen = () => {
+    reconnAttempts = 0;
+    connectBtn.disabled = true; disconnectBtn.disabled = false;
+    setConnState('connecting');
+    setStatus('Setting up AI session…');
+    addLog('WebSocket connected.');
+    // Safety fallback: if the server doesn't emit 'ready' within 5 s
+    // (e.g. newer models that skip setup_complete), unlock the mic anyway.
+    setTimeout(() => {
+      if (micBtn.disabled && ws && ws.readyState === WebSocket.OPEN) {
+        addLog('Ready event not received — enabling mic via fallback.');
+        micBtn.disabled = false;
+        setConnState('connected');
+        setStatus('Ready — tap the mic to start.');
         setAiState('idle');
-        const details = event.reason ? `code ${event.code}: ${event.reason}` : `code ${event.code}`;
-        setVoiceStatus(manualDisconnect ? 'Socket disconnected.' : 'Socket disconnected unexpectedly.');
-        addLog(`Voice socket disconnected (${details}).`, manualDisconnect ? 'info' : 'error');
-        ws = null;
-        if (manualDisconnect) return;
-        if (fatalSocketError) { connectBtn.disabled = false; disconnectBtn.disabled = true; recordBtn.disabled = true; return; }
-        if (event.code === 1008) {
-          const reason = (event.reason || '').toLowerCase();
-          if (reason.includes('invalid or expired session')) {
-            addLog('Session invalid or expired. Redirecting to sign-in…', 'error');
-            localStorage.removeItem(SESSION_KEY);
-            window.location.replace('/ui');
-            return;
-          }
-          setVoiceStatus('Voice request rejected by server policy. Check model configuration.');
-          return;
-        }
-        scheduleReconnect();
-      };
+      }
+    }, 5000);
+  };
+
+  ws.onmessage = async (evt) => {
+    // Binary = PCM audio from AI
+    if (evt.data instanceof ArrayBuffer) {
+      if (orbWrap.className.indexOf('speaking') === -1) setAiState('speaking', 'AI is speaking…');
+      await playPcmBuffer(evt.data);
+      return;
+    }
+    if (evt.data instanceof Blob) {
+      if (orbWrap.className.indexOf('speaking') === -1) setAiState('speaking', 'AI is speaking…');
+      await playPcmBuffer(await evt.data.arrayBuffer());
+      return;
     }
 
-    // ── Event listeners ───────────────────────────────────────────────────
-    connectBtn.addEventListener('click', connectSocket);
-    disconnectBtn.addEventListener('click', disconnectSocket);
-    historyToggleBtn.addEventListener('click', toggleHistoryDrawer);
-    historyCloseBtn.addEventListener('click', closeHistoryDrawer);
-    historyOverlay.addEventListener('click', closeHistoryDrawer);
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && historyDrawer.classList.contains('open')) closeHistoryDrawer();
-    });
+    // JSON = status / control
+    let p;
+    try { p = JSON.parse(evt.data); } catch (_) { return; }
 
-    recordBtn.addEventListener('click', async () => {
-      if (!isRecording) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-          startRecordingOnConnect = true;
-          connectSocket();
-          return;
-        }
-        try { await startRecording(); }
-        catch (error) { addLog(`Microphone error: ${error.message || String(error)}`, 'error'); }
-      } else {
-        stopRecording();
+    if (p.error) {
+      addLog(`Server error: ${p.error}`, 'err');
+      if (isModelErr(p.error)) {
+        fatalErr = true;
+        setStatus('Model unavailable. Check GEMINI_MODEL in your .env and restart.');
+        setConnState('error');
+        ws?.close(1011); return;
       }
-    });
+      setAiState('idle');
+      setStatus('Error — reconnecting…');
+      return;
+    }
 
-    logoutBtn.addEventListener('click', async () => {
-      if (!sessionId) return;
-      try { await fetch(`${API_BASE}/logout?session_id=${encodeURIComponent(sessionId)}`, { method: 'POST' }); } catch (_) {}
-      localStorage.removeItem(SESSION_KEY);
-      manualDisconnect = true;
-      disconnectSocket();
-      window.location.replace('/ui');
-    });
+    switch (p.type) {
 
-    // ── Bootstrap ─────────────────────────────────────────────────────────
-    (async () => {
-      buildPromptChips();
-      const urlSession = captureSessionFromUrl();
-      sessionId = urlSession || localStorage.getItem(SESSION_KEY);
-      if (!sessionId) { window.location.replace('/ui'); return; }
-      const profile = await fetchProfile();
-      if (!profile) return;
-      profileAvatar.src = profile.picture || '';
-      profileName.textContent = profile.full_name || profile.email || 'Signed in user';
-      addLog('Session ready. Connecting voice automatically…');
-      connectSocket();
-    })();
-  </script>
+      case 'ready':
+        setConnState('connected');
+        setStatus('Ready — tap the mic to start.');
+        micBtn.disabled = false;
+        addLog('AI session ready.');
+        setAiState('idle');
+        // Auto-start mic (user already granted permission during session)
+        try { await startMic(); }
+        catch (e) {
+          addLog(`Mic permission denied or error: ${e.message}`, 'err');
+          setStatus('Mic blocked. Tap the mic button to try again.');
+        }
+        break;
+
+      case 'tool_calling': {
+        const names = (p.tools||[]);
+        setAiState('tool', `Calling ${names.join(', ')}`);
+        setStatus(`Working on it… (${names.join(', ')})`);
+        addToolCard(names);
+        addLog(`Tool call: ${names.join(', ')}`, 'tool');
+        break;
+      }
+
+      case 'tool_done':
+        setAiState('thinking', 'Composing response…');
+        setStatus('Composing response…');
+        addLog(`Tool done: ${(p.tools||[]).join(', ')}`, 'tool');
+        break;
+
+      case 'interrupted':
+        clearPlayback();
+        // If mic is on, snap back to listening
+        if (isMicOn) { setAiState('listening', 'Listening…'); setStatus('Listening…'); }
+        else { setAiState('idle'); setStatus('Connected. Tap the mic to speak.'); }
+        addLog('AI interrupted.');
+        break;
+
+      case 'turn_complete':
+        // Critical for bidirectionality: after the model's turn, ensure the
+        // mic & recording context are still live so Gemini keeps receiving audio.
+        setAiState('idle');
+        if (isMicOn) {
+          // Resume recording context if browser suspended it during AI playback
+          if (recCtx && recCtx.state === 'suspended') {
+            try { await recCtx.resume(); } catch (_) {}
+          }
+          setAiState('listening', 'Listening…');
+          setStatus('Listening…');
+        } else {
+          setStatus('Connected. Tap the mic to speak.');
+        }
+        addLog('AI turn complete.', 'ai');
+        break;
+
+      case 'text':
+        if (p.text && p.text.trim()) {
+          addResponseCard(p.text);
+          addLog(`AI: ${p.text.trim().slice(0, 120)}${p.text.trim().length > 120 ? '…' : ''}`, 'ai');
+        }
+        break;
+
+      default:
+        // Backward-compat base64 audio chunk
+        if (p.audio_chunk) {
+          const raw = Uint8Array.from(atob(p.audio_chunk), c => c.charCodeAt(0)).buffer;
+          if (orbWrap.className.indexOf('speaking') === -1) setAiState('speaking', 'AI is speaking…');
+          await playPcmBuffer(raw);
+        }
+        break;
+    }
+  };
+
+  ws.onerror = () => { addLog('WebSocket error.', 'err'); setConnState('error'); };
+
+  ws.onclose = (evt) => {
+    connectBtn.disabled = false; disconnectBtn.disabled = true; micBtn.disabled = true;
+    stopMic(); clearPlayback(); setAiState('idle');
+    setConnState('disconnected');
+    const detail = evt.reason ? `${evt.code}: ${evt.reason}` : `code ${evt.code}`;
+    setStatus(manualDisc ? 'Disconnected.' : 'Connection lost.');
+    addLog(`WS closed (${detail}).`, manualDisc ? '' : 'err');
+    ws = null;
+    if (manualDisc) return;
+    if (fatalErr) return;
+    if (evt.code === 1008) {
+      if ((evt.reason||'').toLowerCase().includes('invalid or expired session')) {
+        localStorage.removeItem(SESSION_KEY); window.location.replace('/ui');
+      } else { setStatus('Rejected by server. Check model config.'); }
+      return;
+    }
+    scheduleReconn();
+  };
+}
+
+/* ===================================================================
+   DRAWER
+   =================================================================== */
+function openDrawer()  { drawer.classList.add('open'); overlay.classList.add('open'); drawer.setAttribute('aria-hidden','false'); }
+function closeDrawer() { drawer.classList.remove('open'); overlay.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); }
+
+/* ===================================================================
+   CHIPS
+   =================================================================== */
+function buildChips() {
+  CHIPS.forEach(text => {
+    const btn = document.createElement('button');
+    btn.className = 's-chip'; btn.type = 'button'; btn.setAttribute('role','listitem');
+    btn.textContent = text;
+    btn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(text); addLog(`Prompt copied: "${text}"`); }
+      catch (_) { addLog(`Try saying: "${text}"`); }
+    });
+    chipsRow.appendChild(btn);
+  });
+}
+
+/* ===================================================================
+   PROFILE
+   =================================================================== */
+async function fetchProfile() {
+  const r = await fetch(`${API_BASE}/me?session_id=${encodeURIComponent(sessionId)}`);
+  if (!r.ok) { localStorage.removeItem(SESSION_KEY); window.location.replace('/ui'); return null; }
+  return r.json();
+}
+
+function captureSessionFromUrl() {
+  const url = new URL(location.href);
+  const s = url.searchParams.get('session_id');
+  if (!s) return null;
+  localStorage.setItem(SESSION_KEY, s);
+  url.searchParams.delete('session_id');
+  history.replaceState({}, '', url.toString());
+  return s;
+}
+
+/* ===================================================================
+   EVENT LISTENERS
+   =================================================================== */
+connectBtn.addEventListener('click', connectSocket);
+disconnectBtn.addEventListener('click', () => disconnectSocket(true));
+themeBtn.addEventListener('click', toggleTheme);
+historyBtn.addEventListener('click', openDrawer);
+closeDrawerBtn.addEventListener('click', closeDrawer);
+overlay.addEventListener('click', closeDrawer);
+clearFeedBtn.addEventListener('click', () => {
+  feed.innerHTML = '';
+  const empty = document.createElement('div');
+  empty.className = 'feed-empty'; empty.id = 'feedEmpty';
+  empty.innerHTML = `<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Responses will appear here during your conversation`;
+  feed.appendChild(empty);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer(); });
+
+micBtn.addEventListener('click', async () => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) { connectSocket(); return; }
+  if (isMicOn) { stopMic(); }
+  else {
+    try { await startMic(); }
+    catch (e) { addLog(`Mic error: ${e.message}`, 'err'); }
+  }
+});
+
+logoutBtn.addEventListener('click', async () => {
+  if (!sessionId) return;
+  try { await fetch(`${API_BASE}/logout?session_id=${encodeURIComponent(sessionId)}`, { method: 'POST' }); } catch (_) {}
+  localStorage.removeItem(SESSION_KEY); disconnectSocket(true); window.location.replace('/ui');
+});
+
+/* ===================================================================
+   BOOT
+   =================================================================== */
+(async () => {
+  buildChips();
+  sessionId = captureSessionFromUrl() || localStorage.getItem(SESSION_KEY);
+  if (!sessionId) { window.location.replace('/ui'); return; }
+  const profile = await fetchProfile();
+  if (!profile) return;
+  profileAvatar.src = profile.picture || '';
+  profileName.textContent = profile.full_name || profile.email || 'Signed in';
+  addLog('Session ready. Connecting…');
+  connectSocket();
+})();
+</script>
 </body>
 </html>
