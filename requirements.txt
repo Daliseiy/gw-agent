@@ -1,0 +1,17 @@
+# Web Server & WebSockets
+fastapi
+uvicorn[standard]
+
+# Google GenAI SDK (For Gemini Live API)
+google-genai
+
+# Google Workspace & Authentication
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+
+# Data Validation
+pydantic
+# Optional helpers for web auth/frontends
+python-multipart
+python-dotenv

@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Google Workspace AI Assistant | Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --surface: #ffffff;
+      --surface-soft: #f8f9fa;
+      --text-primary: #1f1f1f;
+      --text-secondary: #5f6368;
+      --outline: #e0e3e7;
+      --elevation-1: 0 1px 2px rgba(60, 64, 67, 0.16), 0 1px 3px 1px rgba(60, 64, 67, 0.08);
+      --elevation-2: 0 2px 6px rgba(60, 64, 67, 0.18), 0 1px 2px rgba(60, 64, 67, 0.08);
+      --blue: #1a73e8;
+      --red: #ea4335;
+      --yellow: #fbbc04;
+      --green: #34a853;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Google Sans", "Inter", "Segoe UI", sans-serif;
+      color: var(--text-primary);
+      background: radial-gradient(circle at 15% 20%, #eef4ff 0, #ffffff 48%),
+                  radial-gradient(circle at 85% 80%, #fff7ec 0, #ffffff 45%);
+    }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+
+    .panel {
+      width: min(1100px, 100%);
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: 28px;
+      box-shadow: var(--elevation-2);
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      overflow: hidden;
+    }
+
+    .hero {
+      padding: 42px 44px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafe 100%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--outline);
+      background: #fff;
+      border-radius: 999px;
+      padding: 7px 12px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      width: fit-content;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    h1 {
+      margin: 18px 0 10px;
+      font-size: clamp(34px, 4vw, 44px);
+      line-height: 1.1;
+      letter-spacing: -0.4px;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 16px;
+      max-width: 560px;
+      line-height: 1.55;
+    }
+
+    .feature-list {
+      margin-top: 26px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #3c4043;
+      font-size: 14px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid #edf0f2;
+      background: #fff;
+    }
+
+    .chip-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .signin {
+      padding: 42px 34px;
+      border-left: 1px solid var(--outline);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+      background: #fff;
+    }
+
+    .signin-card {
+      border: 1px solid #edf0f2;
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: var(--elevation-1);
+      text-align: center;
+    }
+
+    .signin-title {
+      margin: 0 0 8px;
+      font-size: 25px;
+      letter-spacing: -0.2px;
+    }
+
+    .signin-subtitle {
+      margin: 0 0 18px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .google-btn,
+    .secondary-btn {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 140ms ease, background 120ms ease;
+    }
+
+    .google-btn {
+      color: #fff;
+      box-shadow: var(--elevation-1);
+      background: linear-gradient(135deg, var(--blue), #155ec6);
+    }
+
+    .google-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--elevation-2);
+    }
+
+    .secondary-btn {
+      margin-top: 8px;
+      color: #19478a;
+      background: #e8f0fe;
+    }
+
+    .secondary-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .voice-preview {
+      margin-top: 24px;
+      display: grid;
+      place-items: center;
+      gap: 14px;
+    }
+
+    .voice-core {
+      width: 108px;
+      height: 108px;
+      border-radius: 999px;
+      position: relative;
+      background: #fff;
+      border: 1px solid #e7ebef;
+      box-shadow: var(--elevation-1);
+      display: grid;
+      place-items: center;
+    }
+
+    .voice-core::before,
+    .voice-core::after {
+      content: "";
+      position: absolute;
+      inset: -8px;
+      border-radius: inherit;
+      border: 4px solid transparent;
+      animation: pulse 2.2s ease-out infinite;
+    }
+
+    .voice-core::before {
+      border-top-color: var(--blue);
+      border-right-color: var(--yellow);
+      animation-delay: 0.1s;
+    }
+
+    .voice-core::after {
+      inset: -16px;
+      border-bottom-color: var(--green);
+      border-left-color: var(--red);
+      animation-delay: 0.7s;
+    }
+
+    .mic-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #4d8cf5, #26a65a);
+      position: relative;
+    }
+
+    .mic-icon::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      width: 10px;
+      height: 14px;
+      transform: translateX(-50%);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .mic-icon::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 7px;
+      width: 14px;
+      height: 8px;
+      transform: translateX(-50%);
+      border: 2px solid #fff;
+      border-top: 0;
+      border-radius: 0 0 8px 8px;
+    }
+
+    .status {
+      margin-top: 8px;
+      min-height: 21px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .status.error {
+      color: #b3261e;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.9);
+        opacity: 0.2;
+      }
+      60% {
+        opacity: 0.6;
+      }
+      100% {
+        transform: scale(1.11);
+        opacity: 0;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .panel {
+        grid-template-columns: 1fr;
+      }
+
+      .signin {
+        border-left: 0;
+        border-top: 1px solid var(--outline);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <section class="panel">
+      <div class="hero">
+        <div>
+          <span class="eyebrow"><span class="dot"></span>Google Workspace Assistant</span>
+          <h1>Your voice-first copilot for Gmail, Calendar, Tasks, and Contacts.</h1>
+          <p class="lead">
+            Speak naturally, review actions safely, and let the assistant handle your day with context-aware workflows.
+          </p>
+          <div class="feature-list">
+            <div class="feature-item"><span class="chip-dot" style="background:#1a73e8"></span>Smart scheduling with contact resolution</div>
+            <div class="feature-item"><span class="chip-dot" style="background:#ea4335"></span>Voice-safe confirmation before send/delete actions</div>
+            <div class="feature-item"><span class="chip-dot" style="background:#fbbc04"></span>Daily executive briefing across agenda, inbox, and tasks</div>
+            <div class="feature-item"><span class="chip-dot" style="background:#34a853"></span>Live audio interaction with secure user session context</div>
+          </div>
+        </div>
+      </div>
+      <aside class="signin">
+        <div class="signin-card">
+          <h2 class="signin-title">Sign in to continue</h2>
+          <p class="signin-subtitle">
+            Use your Google account to securely authorize Workspace actions on your behalf.
+          </p>
+          <button id="loginBtn" class="google-btn">Continue with Google</button>
+          <button id="continueBtn" class="secondary-btn" disabled>Go to Assistant</button>
+          <div id="status" class="status">Checking existing session...</div>
+          <div class="voice-preview">
+            <div class="voice-core">
+              <div class="mic-icon"></div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const SESSION_KEY = 'gw_agent_session_id';
+
+    const loginBtn = document.getElementById('loginBtn');
+    const continueBtn = document.getElementById('continueBtn');
+    const statusEl = document.getElementById('status');
+
+    function setStatus(message, type = '') {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`.trim();
+    }
+
+    function captureSessionFromUrl() {
+      const url = new URL(window.location.href);
+      const sessionId = url.searchParams.get('session_id');
+      if (!sessionId) return null;
+      localStorage.setItem(SESSION_KEY, sessionId);
+      url.searchParams.delete('session_id');
+      window.history.replaceState({}, '', url.toString());
+      return sessionId;
+    }
+
+    async function validateSession(sessionId) {
+      if (!sessionId) return false;
+      try {
+        const response = await fetch(`${API_BASE}/me?session_id=${encodeURIComponent(sessionId)}`);
+        return response.ok;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    loginBtn.addEventListener('click', async () => {
+      setStatus('Redirecting to Google sign-in...');
+      const returnTo = '/assistant';
+      try {
+        const response = await fetch(`${API_BASE}/auth/google/login?return_to=${encodeURIComponent(returnTo)}`);
+        if (!response.ok) {
+          setStatus('Unable to start Google sign-in. Please try again.', 'error');
+          return;
+        }
+        const data = await response.json();
+        window.location.href = data.authorization_url;
+      } catch (_) {
+        setStatus('Network error while starting sign-in.', 'error');
+      }
+    });
+
+    continueBtn.addEventListener('click', () => {
+      window.location.href = '/assistant';
+    });
+
+    (async () => {
+      const urlSession = captureSessionFromUrl();
+      const storedSession = localStorage.getItem(SESSION_KEY);
+      const sessionId = urlSession || storedSession;
+      const valid = await validateSession(sessionId);
+
+      if (valid) {
+        continueBtn.disabled = false;
+        setStatus('Session active. You can open the assistant now.');
+        if (urlSession) {
+          window.location.replace('/assistant');
+        }
+      } else {
+        localStorage.removeItem(SESSION_KEY);
+        continueBtn.disabled = true;
+        setStatus('No active session. Sign in to begin.');
+      }
+    })();
+  </script>
+</body>
+</html>
