@@ -1,0 +1,88 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy"
+        required: false
+        default: "latest"
+
+env:
+  PROJECT_ID:   ${{ secrets.GCP_PROJECT_ID }}
+  REGION:       us-central1
+  APP_NAME:     workspace-agent
+  REPO:         us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/workspace-agent-repo
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write      # required for Workload Identity Federation
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          SHA=$(echo "${{ github.sha }}" | head -c 8)
+          echo "tag=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "image=${{ env.REPO }}/${{ env.APP_NAME }}:${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --tag "${{ steps.tag.outputs.image }}" \
+            --tag "${{ env.REPO }}/${{ env.APP_NAME }}:latest" \
+            .
+
+      - name: Push to Artifact Registry
+        run: |
+          docker push "${{ steps.tag.outputs.image }}"
+          docker push "${{ env.REPO }}/${{ env.APP_NAME }}:latest"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.APP_NAME }} \
+            --image="${{ steps.tag.outputs.image }}" \
+            --platform=managed \
+            --region=${{ env.REGION }} \
+            --allow-unauthenticated \
+            --service-account="${{ env.APP_NAME }}-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com" \
+            --set-env-vars="APP_ENV=production,LOG_LEVEL=INFO,GEMINI_MODEL=${{ secrets.GEMINI_MODEL }},GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GOOGLE_CLOUD_LOCATION=${{ env.REGION }},GOOGLE_OAUTH_REDIRECT_URI=${{ secrets.APP_URL }}/auth/google/callback" \
+            --set-secrets="GEMINI_API_KEY=workspace-agent-gemini-api-key:latest,GOOGLE_CLIENT_SECRETS_JSON=workspace-agent-google-client-secrets:latest" \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=10 \
+            --timeout=3600 \
+            --quiet
+
+      - name: Get service URL
+        run: |
+          URL=$(gcloud run services describe ${{ env.APP_NAME }} \
+            --platform=managed \
+            --region=${{ env.REGION }} \
+            --format="value(status.url)")
+          echo "### Deployed to Cloud Run" >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Image:** ${{ steps.tag.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
