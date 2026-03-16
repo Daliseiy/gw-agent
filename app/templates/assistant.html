@@ -677,8 +677,6 @@ initTheme();
 let sessionId = null;
 let ws = null;
 let playCtx = null, playerNode = null, playerLoaded = false;
-let recCtx = null, micStream = null, micSrc = null, monGain = null, recProc = null;
-let recLoaded = false;
 let isMicOn = false;
 let manualDisc = false, fatalErr = false;
 let reconnTimer = null, reconnAttempts = 0;
@@ -879,110 +877,128 @@ async function playPcmBuffer(raw) {
 }
 
 /* ===================================================================
-   AUDIO RECORDING
-   =================================================================== */
-async function ensureRecCtx() {
-  const C = window.AudioContext || window.webkitAudioContext;
-  if (!C) throw new Error('Web Audio not supported');
-  if (!recCtx || recCtx.state === 'closed') recCtx = new C({ sampleRate: 16000 });
-  if (recCtx.state === 'suspended') await recCtx.resume();
-  return recCtx;
-}
+   AUDIO RECORDING  —  Google bidi-demo reference pattern
+   ===================================================================
+   KEY INSIGHT from Google's official reference implementation:
 
-// Keep the recording context from auto-suspending (browser may suspend it
-// when the tab is in background or when AI audio is playing).
-let recContextKeepAlive = null;
-function startRecCtxWatchdog() {
-  if (recContextKeepAlive) return;
-  recContextKeepAlive = setInterval(async () => {
-    if (!isMicOn || !recCtx) return;
-    if (recCtx.state === 'suspended') {
-      try { await recCtx.resume(); }
-      catch (_) {}
-    }
-  }, 800);
-}
-function stopRecCtxWatchdog() {
-  if (recContextKeepAlive) { clearInterval(recContextKeepAlive); recContextKeepAlive = null; }
-}
+   1. Create a FRESH AudioContext on every session start, inside the
+      mic button click handler (a real user gesture).
+   2. Stream audio CONTINUOUSLY for the entire session — never stop
+      between turns.  Gemini's server-side VAD detects speech start/stop
+      automatically; we don't need to signal turns manually.
+   3. On turn_complete: do NOTHING with the mic.  Just keep streaming.
+      Rebuilding the graph between turns (our old approach) introduced
+      a brief audio gap that confused the VAD and broke turn 2+.
+   4. On stopMic: tear down everything including the AudioContext so
+      the next startMic() creates a fresh one inside a new click.
+   =================================================================== */
+
+// Stored per-session — all null between sessions.
+let recCtx    = null;   // AudioContext (16 kHz)
+let micStream = null;   // MediaStream from getUserMedia
+let micSrc    = null;   // MediaStreamAudioSourceNode
+let monGain   = null;   // GainNode (gain=0, silent monitor)
+let recProc   = null;   // AudioWorkletNode or ScriptProcessorNode
+let recLoaded = false;  // true once worklet module is loaded into recCtx
 
 function float32ToPcm16(float32) {
   const out = new Int16Array(float32.length);
   for (let i = 0; i < float32.length; i++) {
-    const s = Math.max(-1, Math.min(1, float32[i]));
-    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    // Google's reference: multiply by 0x7fff (not clamped)
+    out[i] = float32[i] * 0x7fff;
   }
   return out;
 }
 
 function sendAudioChunk(float32) {
   if (!isMicOn || !ws || ws.readyState !== WebSocket.OPEN) return;
-  const pcm = float32ToPcm16(float32);
-  try { ws.send(pcm.buffer); }
-  catch (_) {}
+  try { ws.send(float32ToPcm16(float32).buffer); } catch (_) {}
 }
 
+/** Start mic — MUST be called directly from a user-gesture handler.
+ *  Creates a fresh AudioContext (Chrome autoplay policy requirement). */
 async function startMic() {
   if (isMicOn) return;
-  const ctx = await ensureRecCtx();
-  micStream = await navigator.mediaDevices.getUserMedia({
-    audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-  });
-  micSrc  = ctx.createMediaStreamSource(micStream);
-  monGain = ctx.createGain(); monGain.gain.value = 0;
 
-  let useWorklet = false;
-  if (ctx.audioWorklet && window.AudioWorkletNode) {
-    if (!recLoaded) {
-      try { await ctx.audioWorklet.addModule(RECORDER_URL); recLoaded = true; useWorklet = true; }
-      catch (_) { useWorklet = false; }
-    } else { useWorklet = true; }
+  // 1. Create a fresh AudioContext at 16 kHz inside the gesture.
+  //    This is the ONLY correct place — creating it from a WS message
+  //    handler will leave it suspended and audio will never flow.
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) { addLog('Web Audio not supported.', 'err'); return; }
+  recCtx = new C({ sampleRate: 16000 });
+  // Chrome may still start it suspended — resume it now while we're
+  // still in the synchronous part of the gesture handler.
+  if (recCtx.state === 'suspended') await recCtx.resume();
+
+  // 2. Request microphone access.
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, sampleRate: 16000,
+               echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  } catch (e) {
+    addLog(`Mic permission denied: ${e.message}`, 'err');
+    setStatus('Microphone blocked. Please allow mic access and try again.');
+    recCtx.close(); recCtx = null;
+    return;
   }
 
-  if (useWorklet) {
-    recProc = new AudioWorkletNode(ctx, 'pcm-capture-processor');
+  // 3. Load worklet module into this context (once per context).
+  recLoaded = false;
+  if (recCtx.audioWorklet && window.AudioWorkletNode) {
+    try {
+      await recCtx.audioWorklet.addModule(RECORDER_URL);
+      recLoaded = true;
+    } catch (e) {
+      addLog(`AudioWorklet load failed — using ScriptProcessor fallback: ${e.message}`, '');
+    }
+  }
+
+  // 4. Build audio graph: mic → processor → silent gain → destination.
+  micSrc  = recCtx.createMediaStreamSource(micStream);
+  monGain = recCtx.createGain();
+  monGain.gain.value = 0;  // inaudible — prevents mic feedback
+
+  if (recLoaded) {
+    recProc = new AudioWorkletNode(recCtx, 'pcm-capture-processor');
     recProc.port.onmessage = e => sendAudioChunk(e.data);
   } else {
-    recProc = ctx.createScriptProcessor(4096, 1, 1);
+    recProc = recCtx.createScriptProcessor(4096, 1, 1);
     recProc.onaudioprocess = e => sendAudioChunk(e.inputBuffer.getChannelData(0));
   }
-
   micSrc.connect(recProc);
   recProc.connect(monGain);
-  monGain.connect(ctx.destination);
+  monGain.connect(recCtx.destination);
 
   isMicOn = true;
-  startRecCtxWatchdog();
-
-  // Signal mic active to backend
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'mic_start' }));
+    try { ws.send(JSON.stringify({ type: 'mic_start' })); } catch (_) {}
   }
-
   updateMicBtn();
   setStatus('Listening…');
   setAiState('listening', 'Listening…');
-  addLog('Microphone on.');
+  addLog('Microphone on — streaming continuously.');
 }
 
 function stopMic() {
   isMicOn = false;
-  stopRecCtxWatchdog();
 
-  if (recProc) { if (recProc.port) recProc.port.onmessage = null; recProc.disconnect(); recProc = null; }
-  if (monGain)  { monGain.disconnect();  monGain  = null; }
-  if (micSrc)   { micSrc.disconnect();   micSrc   = null; }
-  if (micStream){ micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  // Tear down the entire graph AND close the context.
+  // The next startMic() will create a fresh one in a new user gesture.
+  if (recProc) { if (recProc.port) recProc.port.onmessage = null; try { recProc.disconnect(); } catch (_) {} recProc = null; }
+  if (monGain) { try { monGain.disconnect(); } catch (_) {} monGain = null; }
+  if (micSrc)  { try { micSrc.disconnect();  } catch (_) {} micSrc  = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (recCtx)  { try { recCtx.close(); } catch (_) {} recCtx = null; }
+  recLoaded = false;
 
-  // Signal mic inactive to backend
   if (ws && ws.readyState === WebSocket.OPEN) {
     try { ws.send(JSON.stringify({ type: 'mic_stop' })); } catch (_) {}
   }
-
   updateMicBtn();
   setAiState('idle');
   if (ws && ws.readyState === WebSocket.OPEN) setStatus('Connected. Tap mic to speak.');
-  addLog('Microphone muted.');
+  addLog('Microphone off.');
 }
 
 function updateMicBtn() {
@@ -1004,6 +1020,8 @@ function updateMicBtn() {
     micLabel.textContent = 'Unmute';
   }
 }
+
+
 
 /* ===================================================================
    RECONNECT
@@ -1103,16 +1121,14 @@ function connectSocket() {
 
       case 'ready':
         setConnState('connected');
-        setStatus('Ready — tap the mic to start.');
+        setStatus('Ready — tap the mic to start talking.');
         micBtn.disabled = false;
-        addLog('AI session ready.');
+        addLog('AI session ready. Tap the mic button to begin.');
         setAiState('idle');
-        // Auto-start mic (user already granted permission during session)
-        try { await startMic(); }
-        catch (e) {
-          addLog(`Mic permission denied or error: ${e.message}`, 'err');
-          setStatus('Mic blocked. Tap the mic button to try again.');
-        }
+        // Do NOT auto-start the mic here.
+        // ws.onmessage is a network callback — Chrome blocks new AudioContext()
+        // in any non-gesture context (autoplay policy).  The user must click
+        // the mic button, which IS a user gesture, to create the AudioContext.
         break;
 
       case 'tool_calling': {
@@ -1139,18 +1155,14 @@ function connectSocket() {
         break;
 
       case 'turn_complete':
-        // Critical for bidirectionality: after the model's turn, ensure the
-        // mic & recording context are still live so Gemini keeps receiving audio.
+        // Audio is streaming continuously — do NOT stop/rebuild the mic.
+        // Gemini's VAD is already listening for the next utterance.
         setAiState('idle');
         if (isMicOn) {
-          // Resume recording context if browser suspended it during AI playback
-          if (recCtx && recCtx.state === 'suspended') {
-            try { await recCtx.resume(); } catch (_) {}
-          }
           setAiState('listening', 'Listening…');
           setStatus('Listening…');
         } else {
-          setStatus('Connected. Tap the mic to speak.');
+          setStatus('Connected. Tap mic to speak.');
         }
         addLog('AI turn complete.', 'ai');
         break;
@@ -1158,6 +1170,21 @@ function connectSocket() {
       case 'text':
         if (p.text && p.text.trim()) {
           addResponseCard(p.text);
+          addLog(`AI: ${p.text.trim().slice(0, 120)}${p.text.trim().length > 120 ? '…' : ''}`, 'ai');
+        }
+        break;
+
+      case 'input_transcript':
+        // User's speech as text — show in feed for context
+        if (p.text && p.text.trim()) {
+          if (p.finished) addLog(`You: ${p.text.trim()}`, '');
+        }
+        break;
+
+      case 'output_transcript':
+        // AI's speech as text — show as response card
+        if (p.text && p.text.trim() && p.finished) {
+          addResponseCard(p.text.trim());
           addLog(`AI: ${p.text.trim().slice(0, 120)}${p.text.trim().length > 120 ? '…' : ''}`, 'ai');
         }
         break;
