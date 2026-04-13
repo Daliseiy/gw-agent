@@ -4,6 +4,9 @@ A voice-first AI executive assistant powered by Gemini Live API. Speak naturally
 
 ![System Design](docs/system-design.svg)
 
+<img width="1277" height="585" alt="Screenshot from 2026-04-13 13-29-01" src="https://github.com/user-attachments/assets/4de93ea9-a6f3-48e1-aa34-975ea6a63c0f" />
+<img width="1277" height="602" alt="Screenshot from 2026-04-13 13-39-12" src="https://github.com/user-attachments/assets/dee9f4fb-bb2e-448c-a6be-528031009d1e" />
+
 ---
 
 ## What it does
